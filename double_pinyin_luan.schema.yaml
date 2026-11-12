@@ -1,0 +1,207 @@
+# Rime schema
+# encoding: utf-8
+#
+# 乱序 17 键双拼 —— 完整继承本机「白霜小鹤双拼」配置外壳
+#
+# 部署前提：本文件必须和 rime_frost_double_pinyin_flypy.schema.yaml 放在同一个
+# Rime 用户目录，且该方案的依赖也齐全（rime_frost 词库及 cn_dicts*、lua/、
+# melt_eng、radical_pinyin、rime_frost_aux 等）。缺文件会导致 __include 编译失败。
+# 配套键盘：luan17.trime.yaml
+#
+# 配套 Lua（必须一起放到用户目录的 lua/ 下，共 4 个，全部需要覆盖）：
+#   luan17_syllables.lua   音节→17 键编码表 + 共享状态 + prompt 写入
+#   luan17_processor.lua   F5~F10 选码（由键盘新增的一行按键发出）
+#   luan17_filter.lua      按候选的 ［全拼］ 注释过滤出指定音节（corrector 之前）
+#   luan17_tags.lua        把同码音节写进 Segment.prompt（filters 最后）
+#
+# 交互（以 nh = NR 键 + HP 键为例，同码音节 na / rua / nia）：
+#   第 1 行（编码提示行，候选栏上方）：〔1 na  2 rua  3 nia〕
+#   第 2 行（候选栏）：              混合候选字
+#   点键盘新增行的「1」键  →  第 2 行只剩 na 的字词；第 1 行变成
+#                              〔✓ na  2 rua  3 nia  0 全部〕
+#   点「全部」键（或循环键）→ 恢复混合候选
+#   不选              → 混合候选照常，空格 / 数字选字 / 继续打字完全不受影响
+#
+# ⚠ 为什么不把拼音做成「可点的候选」：Trime 点候选会走
+#   RimeSelectCandidate → Context::Select() → ConcreteEngine::OnSelect()，
+#   librime 无条件 seg.Close() 并把当前段标记 kConfirmed（或 Forward）。
+#   也就是「点候选 = 确认上屏」，这是 librime 的核心语义，与 Trime 版本无关，
+#   再新的版本也一样。旧版把音节塞进候选列表当按钮，必然出现「点了拼音
+#   却上屏数字 / 拼音 / 清空输入」，已彻底废弃。
+#   现在拼音只放在 Segment.prompt（不上屏），选择走按键，候选一个都不动。
+#
+# 继承原理（Rime 编译指令）：
+#   __include 引入被继承方案的整个根节点；map 节点递归合并、本地字段覆盖；
+#   list 节点整体替换。因此这里只写必须改的 5 处：
+#     1. schema            —— 改 id / 名称，dependencies 等从被继承方案保留
+#     2. speller/algebra   —— 整表替换为乱序 17 键双拼映射
+#     3. translator        —— 换 prism；清空小鹤键位专用的 preedit_format
+#     4. engine            —— 整份重列 processors / filters，插入 3 个选码组件
+#     5. luan17_select     —— 新增：功能键 repr 映射与提示行开关
+#   其余全部原样继承：雾凇词库、开关、标点、recognizer、key_binder、
+#   corrector、pin_cand、grammar、frost_aux、所有 translator / segmentor。
+#
+# ⚠ list 是「整体替换」而非追加：若以后升级雾凇，需同步核对下面的
+#   processors / filters 两份列表是否与新版的 rime_frost_double_pinyin_flypy 一致。
+
+__include: rime_frost_double_pinyin_flypy.schema.yaml:/
+
+schema:
+  schema_id: double_pinyin_luan
+  name: 双拼
+  version: "1.0"
+  author:
+    - 配置外壳：iDvel / gaboolic（白霜小鹤双拼）
+    - 键位：百度输入法「新17乱（右删版）」
+    - Rime 映射：Momo 默默（2015）
+  description: |
+    雾凇词库 + 乱序 17 键双拼。
+    17 键每键输出一个字母：首键声母、次键韵母，零声母用 Q 起头。
+
+# ---------------------------------------------------------------------------
+# 输入引擎：只动 processors / filters 两份列表（Rime 中 list 整体替换，
+# 所以必须整份重列）。segmentors / translators 不写，原样继承。
+#
+# 顺序要点：
+#   * luan17_processor 排在 speller / punctuator / selector 之前，只拦截
+#     F5~F10（和一组别名）；其余按键一律放行，数字选字、空格上屏、翻页、
+#     继续打字的手感与没有本方案时完全一致。
+#   * luan17_filter 必须排在 is_in_user_dict 之后、corrector 之前：
+#     is_in_user_dict 会把用户词/联想句的 comment 改成 * 和 ∞，
+#     corrector 则会改写 ［全拼］ 注释；只有夹在两者之间才读得到原始全拼。
+#   * luan17_tags 排在最后：它不碰候选，只在整轮翻译收尾时把同码音节
+#     写进 Segment.prompt（候选栏上方的编码行）。放在最后能保证读到
+#     最终的候选状态，也避开其它滤镜对 composition 的重建。
+# ---------------------------------------------------------------------------
+engine:
+  processors:
+    - lua_processor@*luan17_processor            # 【新增】F5~F10 重码选码
+    - lua_processor@*select_character            # 以词定字
+    - ascii_composer
+    - recognizer
+    - key_binder
+    - speller
+    - punctuator
+    - selector
+    - navigator
+    - express_editor
+  filters:
+    - lua_filter@*is_in_user_dict               # 用户词典的词加上一个 *
+    - lua_filter@*luan17_filter                 # 【新增】按音节过滤真实候选
+    - lua_filter@*corrector                     # 错音错字提示
+    - reverse_lookup_filter@radical_reverse_lookup  # 部件拆字滤镜
+    - lua_filter@*autocap_filter                 # 英文自动大写
+    - lua_filter@*pin_cand_filter                # 置顶候选项
+    - lua_filter@*reduce_english_filter          # 降低部分英语单词的位置
+    - lua_filter@*aux_lookup_filter              # ` phrase aux lookup
+    - simplifier@emoji
+    - simplifier@chaifen
+    - simplifier@chaifen_all
+    - simplifier@chinese_english
+    - simplifier@traditionalize                 # 简繁切换
+    - simplifier@mars                           # 火星文
+    - uniquifier                                # 去重（按 text，故标签必须在其后）
+    - lua_filter@*luan17_tags                   # 【新增】编码行音节提示（不碰候选）
+
+# ---------------------------------------------------------------------------
+# 重码选码设置
+#
+# prompt_style: on   —— 在候选栏上方的编码提示行显示同码音节
+#                none —— 关掉这行提示（选码功能仍然可用）
+#   提示由 luan17_tags.lua 写进 Segment.prompt。librime 的
+#   Composition::GetPreedit() 会把它插入编码行，而 GetCommitText()
+#   不含 prompt，所以这行字永远不会上屏到文本框。
+#
+# keys: 各动作对应的按键 repr。默认绑定 F5~F10，由 luan17.trime.yaml
+#   中文键盘第 0 行的五个新增按键 send 出来（1 / 2 / 3 / 4 / 全部）。
+#   这一行是新增的，没有占用任何原有按键或上滑手势。
+#   cycle —— 循环：全部 → 第 1 个音节 → … → 第 N 个 → 全部
+#   s1~s4 —— 直接选第 1~4 个音节（该编码不足 N 个时忽略）
+#   clear —— 立即恢复全部候选
+# Lua 里另内置一组别名（* / ! / @ / # / $ / % 及其键名），供物理键盘或
+# 自定义 key_binder 使用，主题未绑定，不会占用任何按键。
+# ---------------------------------------------------------------------------
+luan17_select:
+  prompt_style: "on"
+  # 应急开关：万一某台机器的 F5~F10 没能送到 Rime，把它改成 "on"，
+  # 就可用数字 1~4 选第 1~4 个音节、0 恢复全部。默认 "off"，
+  # 因为开启后重码编码下的数字键会临时用于选码（不再选第 n 个候选字）。
+  number_keys: "off"
+  keys:
+    cycle: F5
+    s1: F6
+    s2: F7
+    s3: F8
+    s4: F9
+    clear: F10
+
+# ---------------------------------------------------------------------------
+# 拼写设定：只替换 algebra。alphabet / initials / delimiter 从被继承方案保留
+# （其 alphabet 含 26 个大小写字母，覆盖 17 键输出的全部字母）。
+# 规则顺序不可随意调整 —— 长韵母必须先于短韵母替换。
+# 声母 → 键位字母：ch=c  c=f  k=j  p=h  r=n  sh=s  s=m  zh=z  z=w
+#                  其余声母 b d f g h j l m n q t w x y 用本字母
+# 韵母 → 键位字母：见下方 xform 列表，与 luan17.trime.yaml 的键面标注一一对应
+# ---------------------------------------------------------------------------
+speller:
+  algebra:
+    - erase/^xx$/
+    - derive/^([jqxy])u$/$1v/
+    - xform/^ch/C/
+    - xform/^c/F/
+    - xform/^k/J/
+    - xform/^([aoe].*)$/Q$1/      # 零声母音节，Q 起头
+    - xform/^p/H/
+    - xform/^r/N/
+    - xform/^sh/S/
+    - xform/^s/M/
+    - xform/^zh/Z/
+    - xform/^z/W/
+    - xform/uang$/Q/
+    - xform/iang$/C/
+    - xform/iong$/B/
+    - xform/ang$/Z/
+    - xform/eng$/Y/
+    - xform/ian$/Q/
+    - xform/iao$/Z/
+    - xform/ing$/Y/
+    - xform/ong$/T/
+    - xform/uai$/X/
+    - xform/uan$/X/
+    - xform/ai$/L/
+    - xform/an$/N/
+    - xform/ao$/B/
+    - xform/ei$/G/
+    - xform/en$/S/
+    - xform/er$/T/
+    - xform/ua$/H/
+    - xform/ie$/M/
+    - xform/in$/S/
+    - xform/iu$/F/
+    - xform/ou$/F/
+    - xform/ia$/H/
+    - xform/ue$/L/
+    - xform/ui$/C/
+    - xform/un$/G/
+    - xform/uo$/M/
+    - xform/a$/H/
+    - xform/e$/W/
+    - xform/i$/J/
+    - xform/o$/X/
+    - xform/u$/D/
+    - xform/v$/X/
+    - xlit/QWERTYOPASDFGHJKLZXCVBNM/qwertyopasdfghjklzxcvbnm/
+
+translator:
+  prism: double_pinyin_luan       # 必须换名，否则与被继承方案共用 prism 互相覆盖
+  # 被继承方案的 preedit_format 是小鹤键位专用的还原规则，套到 17 键会显示错乱；
+  # 且一键多韵母无法唯一还原，故清空，编码区直接显示双拼码。
+  # comment_format / spelling_hints / always_show_comments 仍继承：
+  # 主翻译器会给每个候选挂上 ［全拼］ 注释，luan17_filter.lua 正是靠它
+  # 判断该候选属于哪个音节（排在 corrector 之前，读得到原始全拼）。
+  #
+  # 【不要开 keep_comments】开它会给每个候选字挂自己的全拼，变成
+  # 「给候选字加拼音」。默认关闭时 corrector.lua 会清掉 ［全拼］，
+  # 候选栏保持干净；同码音节统一由 luan17_tags.lua 显示在上方编码行，
+  # 而不是给每个候选字单独加注释。
+  preedit_format: []

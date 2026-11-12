@@ -1,0 +1,459 @@
+# yaml-language-server: $schema=./trime-schema.json
+# Trime / 同文输入法「乱序 17 键」双拼键盘（百度「新 17 乱 · 右删版」键位）
+# encoding: utf-8
+#
+# 布局：3 行 × 6 列，右下角 1 格让给退格键，故编码键共 17 个。
+#
+#   第 0 行（新增）：1 | 2 | 3 | 4 | 全部      ← 重码选码，不占用任何原有键位
+#   11 HP    12 Sh    13 Zh    14 B     15 X      16 MS
+#   21 L     22 D     23 Y     24 WZ    25 JK     26 NR
+#   31 Ch    32 Q     33 G     34 CF    35 T      36 ⌫
+#   功能行：123 | 符 | ， | 空格 | 。 | ⏎   （全部保持原版，未占用任何按键）
+#
+# 【上下两行】用的是 Trime 原生的两行结构，不是把候选栏拆开：
+#   第 1 行 = 键盘上方的编码提示行（preedit），由 Lua 写入 Segment.prompt
+#             显示同码音节，例如 〔1 na  2 rua  3 nia〕
+#   第 2 行 = 候选栏，只显示候选字
+#   选 na 后第 2 行只剩 na 的字词；点「全部」恢复混合候选；不选照常。
+#   提示行里的字在 librime 的 GetCommitText() 里不存在 → 永不上屏。
+#
+# ⚠ 为什么拼音不放在候选栏里做成「可点的候选」：
+#   Trime 点候选 = RimeSelectCandidate → Context::Select() →
+#   ConcreteEngine::OnSelect()，librime 会无条件 seg.Close() 并把当前段
+#   标记 kConfirmed / Forward。也就是「点候选就是确认上屏」，与
+#   Trime 版本无关（最新 3.3.14 也一样），和候选 text 是不是空串也无关。
+#   所以旧版把音节塞进候选列表当按钮，必然出现「点了拼音却上屏数字 /
+#   拼音 / 清空输入」。现在候选一个都不动，选择走上面那一行按键。
+#
+# 【选码按键】第 0 行五个键分别 send: F6 / F7 / F8 / F9 / F10，
+#   Lua 处理器收到后切音节；F5 是循环键（本主题未绑定，供物理键盘用）。
+#   这一行是新增的，原来的 17 个编码键、退格、功能行及所有上滑手势
+#   完全没动。不需要这一行时可以整行删掉，改用物理键盘 F5~F10。
+#   数字 1~9 选字、空格上屏、翻页、继续打字的行为完全不变。
+#
+# 由 double_pinyin_luan.schema.yaml 的 4 个 Lua 组件实现：
+#   luan17_syllables.lua / luan17_processor.lua / luan17_filter.lua /
+#   luan17_tags.lua —— 四个都要放进 Rime 用户目录的 lua/ 并一起覆盖。
+#
+# 每个编码键 click 输出一个小写字母：首键作声母码，次键作韵母码，
+# 零声母音节以 Q 键起头（例：安 = Q + NR = qn，装 = Zh + Q = zq）。
+# 必须与同目录下的 double_pinyin_luan.schema.yaml 配套部署；
+# 只换皮肤不换输入方案，按键只会打出无意义的字母串。
+# 该方案用 __include 整份继承本机 rime_frost_double_pinyin_flypy
+# （白霜小鹤双拼）的配置外壳，只把 speller/algebra 换成这套 17 键映射，
+# 并在 engine 里叠加 3 个 Lua 文件实现的「重码选码」。
+#
+# 适用 Trime 3.x（config_version 3.0 / preset_keyboards 格式）。
+#
+# 配色含浅色 / 深色两套，通过 dark_scheme / light_scheme 双向链接跟随系统
+# 深色模式自动切换；需在同文设置里打开「跟随系统夜间模式」才会生效。
+
+config_version: "3.0"
+name: "乱序17键双拼"
+author: "WorkBuddy 整理（键位源自百度新17乱，Rime 版参考 Momo 默默）"
+
+style:
+  color_scheme: default
+
+  keyboard_height: 296
+  keyboard_height_land: 236
+  horizontal: true
+
+  keyboard_padding: 2
+  keyboard_padding_bottom: 5
+  keyboard_padding_land: 0
+  keyboard_padding_land_bottom: 0
+
+  reset_ascii_mode: false
+  auto_caps: false
+
+  latin_locale: en_US
+  locale: zh_CN
+
+  enter_label_mode: 3
+  enter_labels:
+    go: "前往"
+    done: "完成"
+    next: "下一个"
+    pre: "上一个"
+    search: "搜索"
+    send: "发送"
+    default: "⏎"
+
+  keyboards:
+    - default
+    - letter
+    - number
+    - symbols
+
+  candidate_use_cursor: true
+
+  # 候选注释按默认贴在右侧即可。上下两行由「编码提示行 + 候选栏」实现，
+  # 不再依赖 comment_position / comment_on_top，也不需要给候选挂全拼注释。
+  # （3.3.11+ 支持 comment_position: right / top / overlay；默认 right。）
+  comment_position: right
+  comment_text_size: 12
+  candidate_view_height: 40
+  candidate_text_size: 20
+  candidate_padding: 3
+  candidate_spacing: 3
+
+  horizontal_gap: 2
+  vertical_gap: 2
+  key_height: 55
+  key_width: 16
+  round_corner: 6
+  key_text_size: 19
+  key_long_text_size: 15
+  symbol_text_size: 9
+
+  preview_height: 48
+  preview_offset: -12
+  preview_text_size: 32
+
+preedit:
+  horizontal_padding: 8
+  top_end_radius: 4
+  foreground:
+    font_size: 17
+
+fallback_colors:
+  candidate_text_color: text_color
+  keyboard_background: keyboard_back_color
+  off_key_symbol_color: off_key_text_color
+  hilited_off_key_symbol_color: hilited_off_key_text_color
+  on_key_symbol_color: on_key_text_color
+  hilited_on_key_symbol_color: hilited_on_key_text_color
+  space_back_color: key_back_color
+  space_text_color: key_text_color
+  hilited_space_back_color: hilited_key_back_color
+  enter_back_color: off_key_back_color
+  enter_text_color: off_key_text_color
+  enter_symbol_color: enter_text_color
+  hilited_enter_back_color: hilited_off_key_back_color
+
+window:
+  insets:
+    vertical: 6
+    horizontal: 6
+  item_padding:
+    vertical: 4
+    horizontal: 8
+  min_width: 240
+  corner_radius: 12
+  alpha: 0.96
+  # 悬浮候选窗口同样按「拼音小字 / 候选字大字」的比例
+  foreground:
+    label_font_size: 15
+    text_font_size: 22
+    comment_font_size: 13
+
+liquid_keyboard:
+  __include: trime:/liquid_keyboard
+
+tool_bar:
+  button_spacing: 8
+  back_style: "更多"
+  buttons:
+    - background: { normal: key_back_color, highlight: hilited_key_back_color, type: rectangle, corner_radius: 10, vertical_inset: 6, horizontal_inset: 2 }
+      foreground: { normal: key_text_color, highlight: hilited_key_text_color, font_size: 15, padding: 6 }
+      action: Hide
+    - background: { normal: key_back_color, highlight: hilited_key_back_color, type: rectangle, corner_radius: 10, vertical_inset: 6, horizontal_inset: 2 }
+      foreground: { normal: key_text_color, highlight: hilited_key_text_color, font_size: 15, padding: 6 }
+      action: Menu
+
+preset_keys:
+  __include: trime:/preset_keys
+  # 重码选码：新增的五个按键，只发功能键给 Rime，不会往文本框里写任何字符
+  Luan17_1:   { label: "1",    send: F6 }
+  Luan17_2:   { label: "2",    send: F7 }
+  Luan17_3:   { label: "3",    send: F8 }
+  Luan17_4:   { label: "4",    send: F9 }
+  Luan17_All: { label: "全部", send: F10 }
+  BackSpace: { label: "⌫", repeatable: true, functional: true, send: BackSpace }
+  Return: { label: enter_labels, functional: true, send: Return }
+  Shift_L: { label: "Caps", send: Shift_L, shift_lock: click }
+  Keyboard_default: { label: "中", functional: true, send: Eisu_toggle, select: default }
+  Keyboard_letter: { label: "En", functional: true, send: Eisu_toggle, select: letter }
+  Keyboard_number: { label: "123", functional: true, send: Eisu_toggle, select: number }
+  Keyboard_symbols: { label: "符", functional: true, send: Eisu_toggle, select: symbols }
+
+preset_keyboards:
+  # ---------------------------------------------------------------------------
+  # 中文主键盘：17 个编码键 + 退格 + 功能行
+  # label = 声母（大字），label_symbol = 该键兼管的韵母（小字）
+  # ---------------------------------------------------------------------------
+  default:
+    name: 乱序17键
+    author: WorkBuddy
+    ascii_mode: 0
+    reset_ascii_mode: true
+    ascii_keyboard: letter
+    horizontal_gap: 2
+    vertical_gap: 2
+    width: 17
+    height: 55
+    lock: true
+    keys:
+      # 第 0 行（新增）：重码选码。5×20 = 100，独占一整行，
+      # 下面原来的 3 行编码键 + 功能行一字未动。
+      - { click: Luan17_1, width: 20, height: 34, key_text_size: 16, key_back_color: off_key_back_color, hilited_key_back_color: hilited_off_key_back_color }
+      - { click: Luan17_2, width: 20, height: 34, key_text_size: 16, key_back_color: off_key_back_color, hilited_key_back_color: hilited_off_key_back_color }
+      - { click: Luan17_3, width: 20, height: 34, key_text_size: 16, key_back_color: off_key_back_color, hilited_key_back_color: hilited_off_key_back_color }
+      - { click: Luan17_4, width: 20, height: 34, key_text_size: 16, key_back_color: off_key_back_color, hilited_key_back_color: hilited_off_key_back_color }
+      - { click: Luan17_All, width: 20, height: 34, key_text_size: 15, key_back_color: off_key_back_color, hilited_key_back_color: hilited_off_key_back_color }
+
+      # 第 1 行
+      - { click: "h", label: "HP", label_symbol: "a ia ua", swipe_up: "1", width: 17, height: 55 }
+      - { click: "s", label: "Sh", label_symbol: "en in", swipe_up: "2", width: 17, height: 55 }
+      - { click: "z", label: "Zh", label_symbol: "ang iao", swipe_up: "3", width: 17, height: 55 }
+      - { click: "b", label: "B", label_symbol: "ao iong", swipe_up: "4", width: 16, height: 55 }
+      - { click: "x", label: "X", label_symbol: "o uai uan v", swipe_up: "5", width: 17, height: 55 }
+      - { click: "m", label: "MS", label_symbol: "ie uo", swipe_up: "6", width: 16, height: 55 }
+
+      # 第 2 行
+      - { click: "l", label: "L", label_symbol: "ai ue", swipe_up: "7", width: 17, height: 55 }
+      - { click: "d", label: "D", label_symbol: "u", swipe_up: "8", width: 17, height: 55 }
+      - { click: "y", label: "Y", label_symbol: "eng ing", swipe_up: "9", width: 17, height: 55 }
+      - { click: "w", label: "WZ", label_symbol: "e", swipe_up: "0", width: 16, height: 55 }
+      - { click: "j", label: "JK", label_symbol: "i", swipe_up: "，", width: 17, height: 55 }
+      - { click: "n", label: "NR", label_symbol: "an", swipe_up: "。", width: 16, height: 55 }
+
+      # 第 3 行（第 6 格为退格，即「右删」布局）
+      - { click: "c", label: "Ch", label_symbol: "iang ui", swipe_up: "？", width: 17, height: 55 }
+      - { click: "q", label: "Q", label_symbol: "○ ian uang", swipe_up: "！", width: 17, height: 55 }
+      - { click: "g", label: "G", label_symbol: "ei un", swipe_up: "、", width: 17, height: 55 }
+      - { click: "f", label: "CF", label_symbol: "iu ou", swipe_up: "；", width: 16, height: 55 }
+      - { click: "t", label: "T", label_symbol: "er ong", swipe_up: "：", width: 17, height: 55 }
+      - { click: BackSpace, label: "⌫", width: 16, height: 55, key_back_color: off_key_back_color, hilited_key_back_color: hilited_off_key_back_color }
+
+      # 第 4 行：功能行（与未加选码功能的原版逐键一致）
+      - { click: Keyboard_number, width: 10, height: 50, key_text_size: 17 }
+      - { click: Keyboard_symbols, width: 10, height: 50, key_text_size: 17 }
+      - { click: comma, label: "，", label_symbol: "；", swipe_up: "；", width: 10, height: 50 }
+      - { click: space, swipe_up: Keyboard_letter, width: 40, height: 50, key_back_color: space_back_color, hilited_space_back_color: hilited_space_back_color }
+      - { click: period, label: "。", label_symbol: "？", swipe_up: "？", width: 10, height: 50 }
+      - { click: Return, width: 20, height: 50, key_text_size: 17, key_back_color: enter_back_color, hilited_key_back_color: hilited_enter_back_color, key_text_color: enter_text_color, hilited_key_text_color: enter_text_color }
+
+  # ---------------------------------------------------------------------------
+  # 英文 26 键（上滑临时大写；空格上滑切回中文 17 键）
+  # ---------------------------------------------------------------------------
+  letter:
+    name: 英文26键
+    author: WorkBuddy
+    ascii_mode: 1
+    reset_ascii_mode: true
+    horizontal_gap: 2
+    vertical_gap: 2
+    width: 10
+    height: 45
+    lock: false
+    keys:
+      - { click: "q", swipe_up: "Q" }
+      - { click: "w", swipe_up: "W" }
+      - { click: "e", swipe_up: "E" }
+      - { click: "r", swipe_up: "R" }
+      - { click: "t", swipe_up: "T" }
+      - { click: "y", swipe_up: "Y" }
+      - { click: "u", swipe_up: "U" }
+      - { click: "i", swipe_up: "I" }
+      - { click: "o", swipe_up: "O" }
+      - { click: "p", swipe_up: "P" }
+
+      - { width: 5 }
+      - { click: "a", swipe_up: "A" }
+      - { click: "s", swipe_up: "S" }
+      - { click: "d", swipe_up: "D" }
+      - { click: "f", swipe_up: "F" }
+      - { click: "g", swipe_up: "G" }
+      - { click: "h", swipe_up: "H" }
+      - { click: "j", swipe_up: "J" }
+      - { click: "k", swipe_up: "K" }
+      - { click: "l", swipe_up: "L" }
+      - { width: 5 }
+
+      - { click: Shift_L, send_bindings: false, width: 15 }
+      - { click: "z", swipe_up: "Z" }
+      - { click: "x", swipe_up: "X" }
+      - { click: "c", swipe_up: "C" }
+      - { click: "v", swipe_up: "V" }
+      - { click: "b", swipe_up: "B" }
+      - { click: "n", swipe_up: "N" }
+      - { click: "m", swipe_up: "M" }
+      - { click: BackSpace, width: 15, key_back_color: off_key_back_color, hilited_key_back_color: hilited_off_key_back_color }
+
+      - { click: Keyboard_number, width: 10, height: 50, key_text_size: 17 }
+      - { click: Keyboard_symbols, width: 10, height: 50, key_text_size: 17 }
+      - { click: comma, label: ",", width: 10, height: 50 }
+      - { click: space, swipe_up: Keyboard_default, width: 40, height: 50, key_back_color: space_back_color, hilited_space_back_color: hilited_space_back_color }
+      - { click: period, label: ".", width: 10, height: 50 }
+      - { click: Return, width: 20, height: 50, key_text_size: 17, key_back_color: enter_back_color, hilited_key_back_color: hilited_enter_back_color, key_text_color: enter_text_color, hilited_key_text_color: enter_text_color }
+
+  # ---------------------------------------------------------------------------
+  # 数字键盘
+  # ---------------------------------------------------------------------------
+  number:
+    name: 数字
+    author: WorkBuddy
+    ascii_mode: 1
+    reset_ascii_mode: true
+    horizontal_gap: 2
+    vertical_gap: 2
+    width: 20
+    height: 44
+    lock: false
+    keys:
+      - { click: "1" }
+      - { click: "2" }
+      - { click: "3" }
+      - { click: "4" }
+      - { click: "5" }
+      - { click: "6" }
+      - { click: "7" }
+      - { click: "8" }
+      - { click: "9" }
+      - { click: "0" }
+      - { click: "+" }
+      - { click: "-" }
+      - { click: "=" }
+      - { click: "." }
+      - { click: "," }
+      - { click: "%" }
+      - { click: "/" }
+      - { click: ":" }
+      - { click: "(" }
+      - { click: ")" }
+      - { click: Keyboard_default, width: 20, height: 50, key_text_size: 17 }
+      - { click: BackSpace, width: 20, height: 50, key_back_color: off_key_back_color, hilited_key_back_color: hilited_off_key_back_color }
+      - { click: space, width: 40, height: 50, key_back_color: space_back_color, hilited_space_back_color: hilited_space_back_color }
+      - { click: Return, width: 20, height: 50, key_text_size: 17, key_back_color: enter_back_color, hilited_key_back_color: hilited_enter_back_color, key_text_color: enter_text_color, hilited_key_text_color: enter_text_color }
+
+  # ---------------------------------------------------------------------------
+  # 中文符号键盘
+  # ---------------------------------------------------------------------------
+  symbols:
+    name: 符号
+    author: WorkBuddy
+    ascii_mode: 0
+    horizontal_gap: 2
+    vertical_gap: 2
+    width: 20
+    height: 44
+    lock: false
+    keys:
+      - { click: "，" }
+      - { click: "。" }
+      - { click: "？" }
+      - { click: "！" }
+      - { click: "、" }
+      - { click: "；" }
+      - { click: "：" }
+      - { click: "“" }
+      - { click: "”" }
+      - { click: "…" }
+      - { click: "（" }
+      - { click: "）" }
+      - { click: "【" }
+      - { click: "】" }
+      - { click: "《" }
+      - { click: "》" }
+      - { click: "—" }
+      - { click: "～" }
+      - { click: "·" }
+      - { click: "￥" }
+      - { click: Keyboard_default, width: 20, height: 50, key_text_size: 17 }
+      - { click: BackSpace, width: 20, height: 50, key_back_color: off_key_back_color, hilited_key_back_color: hilited_off_key_back_color }
+      - { click: space, width: 40, height: 50, key_back_color: space_back_color, hilited_space_back_color: hilited_space_back_color }
+      - { click: Return, width: 20, height: 50, key_text_size: 17, key_back_color: enter_back_color, hilited_key_back_color: hilited_enter_back_color, key_text_color: enter_text_color, hilited_key_text_color: enter_text_color }
+
+android_keys:
+  __include: trime:/android_keys
+
+# ---------------------------------------------------------------------------
+# 配色方案：default = 浅色，dark = 深色
+#
+# 自动切换靠配色内部的两个链接字段（Trime 3.2.6+，官方 tongwenfeng
+# 主题即此写法）：
+#   dark_scheme  —— 系统进入深色模式时，本配色改用哪个配色
+#   light_scheme —— 系统回到浅色模式时，本配色改用哪个配色
+# 两套配色都写了双向链接，所以无论你在设置里选了「浅色」还是「深色」，
+# 键盘都会跟随系统；深色配色单独写 light_scheme 才不会出现
+# 「切回白天后悬浮窗仍是夜间配色」的老问题。
+#
+# ⚠ 同文设置里的「跟随系统夜间模式」默认是关闭的，必须手动打开，
+#   否则配色固定不变、不会自动切换。
+# ---------------------------------------------------------------------------
+preset_color_schemes:
+  default:
+    name: 乱17·浅色（自动）
+    author: WorkBuddy
+    light_scheme: default
+    dark_scheme: dark
+    back_color: 0xFFFFFF
+    text_color: 0x111111
+    border_color: 0xD8DDE3
+    candidate_separator_color: 0xE4E7EB
+    candidate_text_color: 0x1F2328
+    # 上行拼音是两行布局里要读的小字，调深到约 6:1，避免 13sp 发灰
+    comment_text_color: 0x5B626B
+    hilited_back_color: 0xEEF3F8
+    hilited_text_color: 0x111111
+    hilited_candidate_back_color: 0xDCE5EF
+    hilited_candidate_text_color: 0x0B4F8A
+    hilited_comment_text_color: 0x5F6670
+    keyboard_back_color: 0xEEF1F4
+    key_back_color: 0xFFFFFF
+    key_border_color: 0xD8DDE3
+    key_text_color: 0x111111
+    key_symbol_color: 0x8A9199
+    hilited_key_back_color: 0xDCE5EF
+    hilited_key_text_color: 0x111111
+    off_key_back_color: 0xE8ECF0
+    hilited_off_key_back_color: 0xDCE5EF
+    off_key_text_color: 0x4E5968
+    on_key_back_color: 0xCDD8E4
+    on_key_text_color: 0x1F2937
+    preview_back_color: 0xFFFFFF
+    preview_text_color: 0x0B4F8A
+    space_back_color: 0xF7F9FC
+    hilited_space_back_color: 0xE3EAF3
+    enter_back_color: 0xE0E7F0
+    enter_text_color: 0x1C2A3A
+    hilited_enter_back_color: 0xCAD6E4
+
+  # 深色配色：与浅色逐键对应，冷蓝灰基调，文字对比度均 ≥ 4.5:1
+  dark:
+    name: 乱17·深色（自动）
+    author: WorkBuddy
+    light_scheme: default
+    dark_scheme: dark
+    back_color: 0x171B21
+    text_color: 0xE8EDF3
+    border_color: 0x333B45
+    candidate_separator_color: 0x2C333C
+    candidate_text_color: 0xE8EDF3
+    comment_text_color: 0x8D97A3
+    hilited_back_color: 0x26303C
+    hilited_text_color: 0xF5F8FB
+    hilited_candidate_back_color: 0x33455C
+    hilited_candidate_text_color: 0x8FC4FF
+    hilited_comment_text_color: 0xB0BAC6
+    keyboard_back_color: 0x12161B
+    key_back_color: 0x242B34
+    key_border_color: 0x333B45
+    key_text_color: 0xE8EDF3
+    key_symbol_color: 0x93A0AE
+    hilited_key_back_color: 0x3C4F68
+    hilited_key_text_color: 0xFFFFFF
+    off_key_back_color: 0x1C222A
+    hilited_off_key_back_color: 0x33455C
+    off_key_text_color: 0xB0BAC6
+    on_key_back_color: 0x3C4F68
+    on_key_text_color: 0xF0F5FA
+    preview_back_color: 0x2C3644
+    preview_text_color: 0x8FC4FF
+    space_back_color: 0x1C222A
+    hilited_space_back_color: 0x33404F
+    enter_back_color: 0x33455C
+    enter_text_color: 0xC9DDF5
+    hilited_enter_back_color: 0x465C78
