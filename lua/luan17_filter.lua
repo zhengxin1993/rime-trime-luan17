@@ -114,7 +114,10 @@ function F.func(input, env)
             end
           end
           if matched then
-            keep = (syls[seg_count] == target)
+            -- 词库里 ü 有 u/v 两种注音，提示行只列规范拼写；比较前归一，
+            -- 选「lue」时 lve 注音的字词也一起留下（见 M.alias）。
+            local last = data.alias[syls[seg_count]] or syls[seg_count]
+            keep = (last == target)
           end
         end
       end

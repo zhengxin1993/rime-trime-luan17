@@ -144,6 +144,10 @@ luan17_select:
 # 韵母 → 键位字母：见下方 xform 列表，与 luan17.trime.yaml 的键面标注一一对应
 # ---------------------------------------------------------------------------
 speller:
+  # ⚠ 下面标「补漏」的 3 条规则专为词库里 ü 的 v 拼写和零声母 eh 而设，
+  #   必须排在更短的 e$/W、an$/N、v$/X 之前：否则 lve→lvw、nve→nvw、
+  #   lvan→lvn、eh→qeh 都是三字母码，两键键盘永远打不出这些字词。
+  #   改动 algebra 后要同步更新 lua/luan17_syllables.lua 的 code_of / alias。
   algebra:
     - erase/^xx$/
     - derive/^([jqxy])u$/$1v/
@@ -162,12 +166,14 @@ speller:
     - xform/iong$/B/
     - xform/ang$/Z/
     - xform/eng$/Y/
+    - xform/eh$/W/                 # 补漏：零声母 eh（欸）→ 与 e 同键 QW
     - xform/ian$/Q/
     - xform/iao$/Z/
     - xform/ing$/Y/
     - xform/ong$/T/
     - xform/uai$/X/
     - xform/uan$/X/
+    - xform/van$/X/                # 补漏：üan 的 v 拼写（lvan）→ 与 uan 同键
     - xform/ai$/L/
     - xform/an$/N/
     - xform/ao$/B/
@@ -181,6 +187,7 @@ speller:
     - xform/ou$/F/
     - xform/ia$/H/
     - xform/ue$/L/
+    - xform/ve$/L/                 # 补漏：üe 的 v 拼写（lve/nve）→ 与 ue 同键
     - xform/ui$/C/
     - xform/un$/G/
     - xform/uo$/M/

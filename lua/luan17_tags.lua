@@ -39,7 +39,7 @@ local function build_prompt(list, index)
   local parts = {}
   for i, syl in ipairs(list) do
     local mark = (i == index) and "✓" or tostring(i)
-    parts[#parts + 1] = mark .. " " .. syl
+    parts[#parts + 1] = mark .. " " .. (data.display[syl] or syl)
   end
   if index > 0 then
     parts[#parts + 1] = "0 全部"

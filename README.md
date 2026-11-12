@@ -152,6 +152,14 @@ En 页第二行起的半角标点：
 不选：                 和以前完全一样，不做任何过滤
 ```
 
+`ll` 也是重码，对应「来 lai」和「略 / 掠 lüe」。Rime 词库里 ü 有 `u` / `v` 两种注音，这里按输入习惯统一显示成 `lve`：
+
+```text
+第 1 行  编码提示行：  ll 〔1 lai  2 lve〕
+第 2 行  候选栏：      来  略  掠  …              ← 混合候选
+按「2」：              只剩「略 / 掠」等 lüe 的字词（lue 与 lve 两种注音都会留下）
+```
+
 - 第 0 行五个键分别发送 `F6 / F7 / F8 / F9 / F10`，对应选第 1~4 个音节 / 恢复全部；`F5` 是循环键（全部 → 1 → … → N → 全部），主题未绑定，供物理键盘或自定义 `key_binder` 用。
 - **第一行是只读提示，拼音本身不能点**——Trime 的编码提示行不是按钮。这是 Trime 能做到的、最接近「拼音一行、候选字一行且拼音可选」的形式。
 
@@ -258,9 +266,36 @@ Luan17_Color_Light: { label: "☀", send: FUNCTION, command: set_color_scheme, o
 
 `lua/luan17_syllables.lua` 由脚本生成，请勿手工改键位。数据来源是上游 `cn_dicts*` / `cn_dicts_cell*` 的注音列，套用本方案 `speller/algebra` 全量运算（含 `derive` 派生，故一个音节可能对应多个编码）：
 
-- 420 个音节 → 275 个两字母编码，其中 120 个是重码，单个编码最多对应 4 个音节；
-- `code_of[音节]` 用于把候选注释的全拼还原成编码，`by_code[编码]` 按字频降序用于列出同码音节；
-- 排除 4 个算不出两字母编码、prism 里只有三字母码的音节：`eh→qeh`、`lvan→lvn`、`lve→lvw`、`nve→nvw`。
+- 420 个规范音节 + 4 个别名注音 = 424 条 `code_of` 记录 → 275 个两字母编码，其中 120 个是重码，单个编码最多对应 4 个音节；
+- `code_of[音节]` 用于把候选注释的全拼还原成编码，`by_code[编码]` 按字频降序用于列出同码音节（只列规范拼写）；
+- **所有注音都落在两字母编码上**，没有三字母码残留。
+
+### ü 的两种注音与三码补漏
+
+上游 `cn_dicts*` 里同一个 ü 音有 `u` / `v` 两套写法，零声母还有 `eh`。旧版 `speller/algebra` 没有覆盖这些形式，它们会被更短的 `e$/W`、`an$/N` 规则吃掉，算成**三字母码**，两键键盘永远打不出来：
+
+| 注音 | 旧编码 | 现在 | 同键的规范音节 |
+| --- | --- | --- | --- |
+| `lve`（略、掠） | `lvw` ❌ | `ll` | `lue` |
+| `nve`（虐） | `nvw` ❌ | `nl` | `nue` |
+| `lvan` | `lvn` ❌ | `lx` | `luan` |
+| `eh`（欸） | `qeh` ❌ | `qw` | `e` |
+
+`speller/algebra` 里补了三条规则，且必须排在更短规则之前：
+
+```yaml
+- xform/eh$/W/       # 零声母 eh → 与 e 同键
+- xform/van$/X/      # üan 的 v 拼写 → 与 uan 同键
+- xform/ve$/L/       # üe 的 v 拼写 → 与 ue 同键
+```
+
+配套在 `luan17_syllables.lua` 里加了 `M.alias`（`lve→lue`、`nve→nue`、`lvan→luan`、`eh→e`）和 `M.display`（提示行把 `lue` / `nue` 显示成 `lve` / `nve`）：
+
+- `by_code` 只列规范拼写，所以提示行不会出现「`lai / lue / lve`」这种重复音节；
+- `luan17_filter.lua` 在比较最后一段音节前先查 `alias`，选 `lve` 时两种注音的字词都会留下，不会因拼写不同被误删；
+- `code_of` 仍登记别名，因为过滤器校验「每段编码是否对得上」时要按候选注释里的实际注音查表。
+
+> 改动 `algebra` 后必须同步更新 `code_of` / `alias`：两者是同一份映射的两个视图，仓库里附有全量一致性校验（424 个音节逐一套用 algebra，编码数与 `by_code` 反向核对）。
 
 ---
 
@@ -270,6 +305,7 @@ Luan17_Color_Light: { label: "☀", send: FUNCTION, command: set_color_scheme, o
 | --- | --- |
 | 部署失败、方案不出现 | 上游白霜拼音没装全，`__include` 找不到 `rime_frost_double_pinyin_flypy.schema.yaml` 或其依赖词库；先按上游 README 整包安装 |
 | 按键打出无意义字母串 | 只换了皮肤，没切换到 `double_pinyin_luan` 方案 |
+| 按 `ll` 打不出「略 / 掠」，`nl` 打不出「虐」 | 旧版 algebra 把 `lve` / `nve` 算成三码 `lvw` / `nvw`。需整体覆盖 `double_pinyin_luan.schema.yaml` **和 4 个 Lua**，然后重新部署（会重建 prism）；详见[第九章](#九音节表与统计) |
 | 编码提示行不显示音节 | `prompt_style` 是否为 `"on"`；或该编码不是重码（同码音节不足 2 个时不显示）；或前端未启用 librime-lua |
 | 按第 0 行没反应 | 把 `number_keys` 改成 `"on"`，改用数字 `1~4` / `0` 选码 |
 | Lua 报错 / 候选栏出现「假按钮」 | 4 个 Lua 里有旧版残留，必须全部覆盖后重新部署 |

@@ -2,9 +2,12 @@
 -- 来源：本机雾凇词库 cn_dicts* / cn_dicts_cell* 的注音列，
 --       套用 double_pinyin_luan.schema.yaml 的 speller/algebra 全量运算
 --       （含 derive 派生，故一个音节可能对应多个编码）。
--- 排除项（算不出 2 字母编码，prism 里只有 3 字母码）：eh→qeh、lvan→lvn、lve→lvw、nve→nvw
+-- 词库里 ü 有 u / v 两种注音（lue 与 lve、nue 与 nve、luan 与 lvan），
+-- 零声母还有 eh。speller/algebra 的 van$/X、ve$/L、eh$/W 已把它们全部
+-- 收进两字母编码（旧版会漏成 lvw / nvw / lvn / qeh 三码，两键打不出来）。
+-- alias 把这些别名归一到规范音节，display 决定提示行显示名（Rime 习惯 v=ü）。
 -- code_of[音节] = {编码 = true, ...}，用于把候选的 comment 全拼还原成编码；
--- by_code[编码] = {音节, ...}，按字频降序，用于「选码」列出同码音节。
+-- by_code[编码] = {音节, ...}，按字频降序，用于「选码」列出同码音节（只列规范拼写）。
 --
 -- 本模块同时承载 processor / filter 共享的运行状态（require 会缓存同一实例）。
 local M = {}
@@ -92,6 +95,7 @@ M.code_of = {
   ["dun"] = { ["dg"] = true },
   ["duo"] = { ["dm"] = true },
   ["e"] = { ["qw"] = true },
+  ["eh"] = { ["qw"] = true },
   ["ei"] = { ["qg"] = true },
   ["en"] = { ["qs"] = true },
   ["eng"] = { ["qy"] = true },
@@ -203,6 +207,8 @@ M.code_of = {
   ["lun"] = { ["lg"] = true },
   ["luo"] = { ["lm"] = true },
   ["lv"] = { ["lx"] = true },
+  ["lvan"] = { ["lx"] = true },
+  ["lve"] = { ["ll"] = true },
   ["ma"] = { ["mh"] = true },
   ["mai"] = { ["ml"] = true },
   ["man"] = { ["mn"] = true },
@@ -248,6 +254,7 @@ M.code_of = {
   ["nun"] = { ["ng"] = true },
   ["nuo"] = { ["nm"] = true },
   ["nv"] = { ["nx"] = true },
+  ["nve"] = { ["nl"] = true },
   ["o"] = { ["qx"] = true },
   ["ou"] = { ["qf"] = true },
   ["pa"] = { ["hh"] = true },
@@ -708,6 +715,28 @@ M.by_code = {
   ["zx"] = { "zhuan", "zhuai" },
   ["zy"] = { "zheng" },
   ["zz"] = { "zhang" },
+}
+
+-- ---------------------------------------------------------------------------
+-- 同一音节的多种词库注音 → 规范音节
+--
+-- by_code 只列规范拼写，所以提示行不会出现「lai / lue / lve」这种重复项；
+-- filter 在比较最后一段音节前先查 alias，于是选「lue」时 lue 与 lve 两种
+-- 注音的字词会一起留下，不会因拼写不同被误删。code_of 里仍保留别名条目，
+-- 因为 filter 校验「每段编码是否对得上」时要按实际注音查表。
+-- ---------------------------------------------------------------------------
+M.alias = {
+  ["lve"]  = "lue",
+  ["nve"]  = "nue",
+  ["lvan"] = "luan",
+  ["eh"]   = "e",
+}
+
+-- 提示行显示名：Rime 用 v 表示 ü，显示 lve / nve 更贴合输入习惯。
+-- 只影响显示，内部 target 仍是规范拼写，不影响任何过滤逻辑。
+M.display = {
+  ["lue"] = "lve",
+  ["nue"] = "nve",
 }
 
 -- ---------------------------------------------------------------------------
