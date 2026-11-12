@@ -1,3 +1,5 @@
 .DS_Store
 .workbuddy/
 *.tar.gz
+# 仓库只放配置文件散文件，不接受打包副本（历史中的 zip 已重写清除）
+*.zip

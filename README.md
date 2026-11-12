@@ -54,9 +54,10 @@ https://github.com/gaboolic/rime-frost/releases/download/nightly/rime-frost-sche
 | `lua/luan17_processor.lua` | `lua/` | 按键处理器：只拦 F5~F10，其余按键一律放行 |
 | `lua/luan17_filter.lua` | `lua/` | 按候选的 `［全拼］` 注释过滤出指定音节（必须排在 `corrector` 之前） |
 | `lua/luan17_tags.lua` | `lua/` | 把同码音节写进编码提示行（`filters` 最后一个，不碰候选） |
-| `luan17-bundle.zip` | 手机端可直接下载覆盖 | 上面 6 个文件的打包副本，与仓库内容一致 |
 
 > 4 个 Lua 文件**必须一起覆盖**。留一个旧版（旧版会往候选栏塞「假候选」、还调用了已删除的 `data.setup`），Lua 加载就会报错、方案失效。
+>
+> 仓库**只提供上面 6 个散文件**，不提供也不接受 `*.zip` 打包副本：手机端直接下载这 6 个文件、按原路径覆盖即可。`.gitignore` 已忽略所有 `.zip`，避免打包文件被误提交；git 历史中也已清除曾经存在过的压缩包。
 
 ---
 
@@ -117,7 +118,7 @@ En 页第二行起的半角标点：
 ## 五、安装（以 Android + 同文 Trime 为例）
 
 1. **先装上游**：把白霜拼音整包解压 / clone 到同文的 Rime 用户目录（`/rime`），重新部署，确认「白霜·小鹤双拼」能正常打字。
-2. **覆盖这 6 个文件**：两个 `*.yaml` 放根目录，4 个 `*.lua` 放 `lua/`（用 `luan17-bundle.zip` 解压覆盖最省事）。
+2. **覆盖这 6 个文件**：两个 `*.yaml` 放根目录，4 个 `*.lua` 放 `lua/`。直接从仓库下载或 clone 后按原路径覆盖即可，仓库不提供压缩包。
 3. **启用输入方案**：在 `default.custom.yaml` 里把方案加进 `schema_list`：
 
    ```yaml
