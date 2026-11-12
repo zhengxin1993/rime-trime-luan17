@@ -4,7 +4,7 @@
 #
 # 布局：3 行 × 6 列，右下角 1 格让给退格键，故编码键共 17 个。
 #
-#   第 0 行（新增）：1 | 2 | 3 | 4 | 全部      ← 重码选码，不占用任何原有键位
+#   第 0 行（新增）：1 | 2 | 3 | 4 | 全部 | ☾  ← 重码选码 + 一键深浅，不占原键位
 #   11 HP    12 Sh    13 Zh    14 B     15 X      16 MS
 #   21 L     22 D     23 Y     24 WZ    25 JK     26 NR
 #   31 Ch    32 Q     33 G     34 CF    35 T      36 ⌫
@@ -47,16 +47,23 @@
 #
 # 适用 Trime 3.x（config_version 3.0 / preset_keyboards 格式）。
 #
-# 配色含浅色 / 深色两套，通过 dark_scheme / light_scheme 双向链接跟随系统
-# 深色模式自动切换；需在同文设置里打开「跟随系统夜间模式」才会生效。
+# 【深浅色】preset_color_schemes 含 default（浅）/ dark（深）两套，用官方
+#   tongwenfeng 主题的单向链接：浅色写 dark_scheme，深色写 light_scheme。
+#   ⚠ 自动跟随由同文 App 的开关控制，主题本身无法代劳：设置 → 主题 →
+#   「跟随系统夜间模式」默认是【关闭】的，必须手动打开；且打开后要重新
+#   选一次主题 / 配色或重启同文，才会重新计算当前配色（开关变化本身不触发
+#   重算）。另外「高级设置 → 界面模式」要设为「自动」，否则 App 会把夜间
+#   状态固定住、系统再怎么切都读不到。
+#   第 0 行的「☾」是不依赖开关的兜底：点一下切深色，长按同一个键回浅色。
 
 config_version: "3.0"
 name: "乱序17键双拼"
 author: "WorkBuddy 整理（键位源自百度新17乱，Rime 版参考 Momo 默默）"
 
 style:
-  color_scheme: default
-
+  # 注意：style/color_scheme 在 Trime 3.x 源码里没有任何读取处，是无效字段。
+  # 当前配色由 App 设置里的「配色方案」(normal_mode_color，默认 default)
+  # 加上「跟随系统夜间模式」开关共同决定，主题不能在这里指定。
   keyboard_height: 296
   keyboard_height_land: 236
   horizontal: true
@@ -172,6 +179,12 @@ preset_keys:
   Luan17_3:   { label: "3",    send: F8 }
   Luan17_4:   { label: "4",    send: F9 }
   Luan17_All: { label: "全部", send: F10 }
+  # 一键切换深浅配色（官方语法见 trime.yaml 的 set_color_ink）：
+  # command 走 CommonKeyboardActionListener.handleColorScheme →
+  # ColorManager.setColorScheme()，只改 App 的配色选择，不写任何文本。
+  # 这是「跟随系统夜间模式」不生效时的可靠兜底，与自动跟随不冲突。
+  Luan17_Color_Dark:  { label: "☾", send: FUNCTION, command: set_color_scheme, option: "dark" }
+  Luan17_Color_Light: { label: "☀", send: FUNCTION, command: set_color_scheme, option: "default" }
   # 符号键盘：中/西文切换 + 三页页签。send: Eisu_toggle 只用于切键盘，
   # 不会真的翻转 Rime 的 ascii_mode（见 CommonKeyboardActionListener KEYCODE_EISU 分支）
   Luan17_Mode:     { label: "中/En", functional: true, toggle: ascii_mode, send: SWITCH_CHARSET, states: [中文, 西文] }
@@ -203,13 +216,15 @@ preset_keyboards:
     height: 55
     lock: true
     keys:
-      # 第 0 行（新增）：重码选码。5×20 = 100，独占一整行，
+      # 第 0 行（新增）：重码选码 + 一键深浅。16×4 + 18 + 18 = 100，独占一整行，
       # 下面原来的 3 行编码键 + 功能行一字未动。
-      - { click: Luan17_1, width: 20, height: 34, key_text_size: 16, key_back_color: off_key_back_color, hilited_key_back_color: hilited_off_key_back_color }
-      - { click: Luan17_2, width: 20, height: 34, key_text_size: 16, key_back_color: off_key_back_color, hilited_key_back_color: hilited_off_key_back_color }
-      - { click: Luan17_3, width: 20, height: 34, key_text_size: 16, key_back_color: off_key_back_color, hilited_key_back_color: hilited_off_key_back_color }
-      - { click: Luan17_4, width: 20, height: 34, key_text_size: 16, key_back_color: off_key_back_color, hilited_key_back_color: hilited_off_key_back_color }
-      - { click: Luan17_All, width: 20, height: 34, key_text_size: 15, key_back_color: off_key_back_color, hilited_key_back_color: hilited_off_key_back_color }
+      # ☾ 单击切深色、长按切浅色（long_click 引用 preset_key，见 Key.bind）。
+      - { click: Luan17_1, width: 16, height: 34, key_text_size: 16, key_back_color: off_key_back_color, hilited_key_back_color: hilited_off_key_back_color }
+      - { click: Luan17_2, width: 16, height: 34, key_text_size: 16, key_back_color: off_key_back_color, hilited_key_back_color: hilited_off_key_back_color }
+      - { click: Luan17_3, width: 16, height: 34, key_text_size: 16, key_back_color: off_key_back_color, hilited_key_back_color: hilited_off_key_back_color }
+      - { click: Luan17_4, width: 16, height: 34, key_text_size: 16, key_back_color: off_key_back_color, hilited_key_back_color: hilited_off_key_back_color }
+      - { click: Luan17_All, width: 18, height: 34, key_text_size: 15, key_back_color: off_key_back_color, hilited_key_back_color: hilited_off_key_back_color }
+      - { click: Luan17_Color_Dark, width: 18, height: 34, key_text_size: 17, key_back_color: off_key_back_color, hilited_key_back_color: hilited_off_key_back_color, long_click: Luan17_Color_Light }
 
       # 第 1 行
       - { click: "h", label: "HP", label_symbol: "a ia ua", swipe_up: "1", width: 17, height: 55 }
@@ -615,22 +630,27 @@ android_keys:
 # ---------------------------------------------------------------------------
 # 配色方案：default = 浅色，dark = 深色
 #
-# 自动切换靠配色内部的两个链接字段（Trime 3.2.6+，官方 tongwenfeng
-# 主题即此写法）：
-#   dark_scheme  —— 系统进入深色模式时，本配色改用哪个配色
-#   light_scheme —— 系统回到浅色模式时，本配色改用哪个配色
-# 两套配色都写了双向链接，所以无论你在设置里选了「浅色」还是「深色」，
-# 键盘都会跟随系统；深色配色单独写 light_scheme 才不会出现
-# 「切回白天后悬浮窗仍是夜间配色」的老问题。
+# 采用官方同文风主题（tongwenfeng.trime.yaml）的【单向链接】写法，
+# 也是 Trime 3.3.11 / 3.3.12 / 3.3.13 ColorManager 与新版
+# ColorSchemeResolver 都明确支持的语义：
+#   default 只写 dark_scheme: dark   → 声明「我是浅色，夜间请用 dark」
+#   dark    只写 light_scheme: default → 声明「我是深色，白天请用 default」
+# 旧版两套配色都写双向链接（自己指自己）虽能解析，但角色判定有歧义，
+# 在 3.3.12 的 switchTheme() 里还会让 lightModeColorScheme 指向自身。
 #
-# ⚠ 同文设置里的「跟随系统夜间模式」默认是关闭的，必须手动打开，
-#   否则配色固定不变、不会自动切换。
+# 选择逻辑（3.3.13 ColorSchemeResolver.resolve）：
+#   followSystemDayNight=false → 直接用设置里选中的配色，固定不变
+#   followSystemDayNight=true  → 按当前 isNightMode() 顺着链接切
+# 所以自动跟随的前提是 App 开关「跟随系统夜间模式」被打开（默认关闭）。
+# 开关变更本身不会触发重算，打开后需重新选一次主题/配色或重启同文。
+# 另外「高级设置 → 界面模式」必须为「自动」，否则 isNightMode() 恒定。
+#
+# 兜底：第 0 行「☾」用 set_color_scheme 命令直接切配色，不依赖该开关。
 # ---------------------------------------------------------------------------
 preset_color_schemes:
   default:
-    name: 乱17·浅色（自动）
+    name: 乱17·浅色
     author: WorkBuddy
-    light_scheme: default
     dark_scheme: dark
     back_color: 0xFFFFFF
     text_color: 0x111111
@@ -666,10 +686,9 @@ preset_color_schemes:
 
   # 深色配色：与浅色逐键对应，冷蓝灰基调，文字对比度均 ≥ 4.5:1
   dark:
-    name: 乱17·深色（自动）
+    name: 乱17·深色
     author: WorkBuddy
     light_scheme: default
-    dark_scheme: dark
     back_color: 0x171B21
     text_color: 0xE8EDF3
     border_color: 0x333B45

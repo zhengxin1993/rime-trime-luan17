@@ -1,6 +1,6 @@
 # 乱序 17 键双拼 · Trime / Rime 配置
 
-基于 [白霜拼音 rime-frost](https://github.com/gaboolic/rime-frost) 的「小鹤双拼」配置外壳，改成百度输入法「新 17 乱（右删版）」乱序 17 键双拼，并加上**重码音节选码**功能；另附一套带浅色 / 深色自动切换的 [同文输入法 Trime](https://github.com/osfans/trime) 主题。
+基于 [白霜拼音 rime-frost](https://github.com/gaboolic/rime-frost) 的「小鹤双拼」配置外壳，改成百度输入法「新 17 乱（右删版）」乱序 17 键双拼，并加上**重码音节选码**功能；另附一套带浅色 / 深色配色、可跟随系统切换并带一键兜底的 [同文输入法 Trime](https://github.com/osfans/trime) 主题。
 
 简单说：17 个编码键，每键输出一个字母，首键作声母码、次键作韵母码，两键一音节；词库、语法模型、标点、辅助码、简繁切换等全部沿用上游白霜拼音，本仓库只提供**增量配置**。
 
@@ -40,7 +40,7 @@ https://github.com/gaboolic/rime-frost/releases/download/nightly/rime-frost-sche
 | Rime 前端 | Android 同文 Trime 3.x（`config_version: "3.0"`） | 其它支持 `lua_processor` / `lua_filter` 的 Rime 前端也能用输入方案，但主题文件是 Trime 专用 |
 | librime-lua | 必须启用 | 4 个 Lua 文件全部依赖；Trime / 白霜整包一般已自带 |
 | 白霜拼音 | 完整一套 | 见上 |
-| 深色自动切换 | 同文设置里打开「跟随系统夜间模式」 | 默认关闭；配色用 `light_scheme` / `dark_scheme` 双向链接 |
+| 深色自动切换 | 同文设置 → 主题 → 打开「跟随系统夜间模式」 | **默认关闭**，主题无法代开；配色用官方单向链接 `dark_scheme` / `light_scheme`。详见[第八章](#八深浅色自动切换) |
 
 ---
 
@@ -49,7 +49,7 @@ https://github.com/gaboolic/rime-frost/releases/download/nightly/rime-frost-sche
 | 文件 | 放到哪里 | 作用 |
 | --- | --- | --- |
 | `double_pinyin_luan.schema.yaml` | Rime 用户目录**根** | 输入方案：`__include` 继承白霜小鹤双拼，只替换 `speller/algebra`、translator 的 prism / preedit，并重列 `engine` 以插入 3 个 Lua 组件 |
-| `luan17.trime.yaml` | Rime 用户目录**根**（Trime 会扫描 `*.trime.yaml`） | 主题：3×6 乱序 17 键键盘 + 新增选码行 + 三页中英文符号键盘 + 浅色 / 深色两套配色 |
+| `luan17.trime.yaml` | Rime 用户目录**根**（Trime 会扫描 `*.trime.yaml`） | 主题：3×6 乱序 17 键键盘 + 新增选码行 / 深浅切换键 + 三页中英文符号键盘 + 浅色 / 深色两套配色 |
 | `lua/luan17_syllables.lua` | `lua/` | 音节 ↔ 17 键编码对照表、共享状态、`Segment.prompt` 写入辅助 |
 | `lua/luan17_processor.lua` | `lua/` | 按键处理器：只拦 F5~F10，其余按键一律放行 |
 | `lua/luan17_filter.lua` | `lua/` | 按候选的 `［全拼］` 注释过滤出指定音节（必须排在 `corrector` 之前） |
@@ -63,7 +63,7 @@ https://github.com/gaboolic/rime-frost/releases/download/nightly/rime-frost-sche
 ## 三、键盘布局
 
 ```text
-第 0 行（新增，选码）：   1      2      3      4     全部
+第 0 行（新增）：         1      2      3      4     全部     ☾
 第 1 行：              HP     Sh     Zh     B      X      MS
 第 2 行：              L      D      Y      WZ     JK     NR
 第 3 行：              Ch     Q      G      CF     T      ⌫
@@ -72,9 +72,9 @@ https://github.com/gaboolic/rime-frost/releases/download/nightly/rime-frost-sche
 
 - 17 个编码键分别输出 `h s z b x m / l d y w j n / c q g f t`，右下角一格让给退格。
 - 零声母音节以 `Q` 键起头，例如「安」= `Q + NR` = `qn`。
-- 第 0 行是**新增**的一行，原来的 17 个编码键、退格、功能行以及所有上滑手势一格未动；数字 `1~9` 选字、空格上屏、翻页、继续打字的行为完全不变。
+- 第 0 行是**新增**的一行，原来的 17 个编码键、退格、功能行以及所有上滑手势一格未动；数字 `1~9` 选字、空格上屏、翻页、继续打字的行为完全不变。前 5 键分别发 `F6~F10` 用于选码，末键「☾」单击切深色、长按切浅色（详见[第八章](#八深浅色自动切换)）。
 
-主题 `style` 里 `keyboard_height: 296`（横屏 236）已为新增行留出高度；不需要选码行时可以把这 5 个键删掉，改用物理键盘 F5~F10。
+主题 `style` 里 `keyboard_height: 296`（横屏 236）已为新增行留出高度；不需要选码行时可以把前 5 个键删掉，改用物理键盘 F5~F10（记得把宽度重新凑满 100）。
 
 符号键盘的扩展见下一节，主键盘（含功能行与上滑手势）一字未动。
 
@@ -129,7 +129,7 @@ En 页第二行起的半角标点：
    ```
 
    然后到同文的输入方案选择里勾「双拼」（`double_pinyin_luan`）。
-4. **启用主题**：同文设置 → 主题 / 配色，选「乱序17键双拼」（配色名为「乱17·浅色（自动）」/「乱17·深色（自动）」）；再到设置里打开「跟随系统夜间模式」以启用自动深浅切换。
+4. **启用主题**：同文设置 → 主题 / 配色，选「乱序17键双拼」（配色名为「乱17·浅色」/「乱17·深色」）。要自动跟随系统深浅，还需按[第八章](#八深浅色自动切换)打开开关并重新触发一次配色计算。
 5. **重新部署**，然后打 `NR` + `HP`（即 `nh`）验证：编码提示行应出现 `〔1 na  2 rua  3 nia〕`。
 
 桌面端（鼠须管 / 小狼毫 / fcitx5-rime）只需第 1~3 步，主题文件用不上；选码按键可用物理键盘 F5~F10。
@@ -191,11 +191,70 @@ RimeSelectCandidate → Context::Select() → ConcreteEngine::OnSelect()
 
 Lua 里另内置一组别名（`*` / `!` / `@` / `#` / `$` / `%` 及对应键名），供物理键盘或自定义 `key_binder` 使用，主题未绑定，不占用任何按键。
 
-在 `luan17.trime.yaml` 里：`style/comment_position: right`（回到默认，不再依赖旧版的两行 hack）、`style/keyboard_height: 296`、`preset_color_schemes.default/dark` 的 `light_scheme` / `dark_scheme` 双向链接。
+在 `luan17.trime.yaml` 里：`style/comment_position: right`（回到默认，不再依赖旧版的两行 hack）、`style/keyboard_height: 296`、两套配色的单向 `dark_scheme` / `light_scheme` 链接，以及 `Luan17_Color_*` 两个 `set_color_scheme` 命令键。注意 `style/color_scheme` 在 Trime 3.x 源码里**没有任何读取处**，是无效字段，已从本主题移除。
 
 ---
 
-## 八、音节表与统计
+## 八、深浅色自动切换
+
+主题里有 `default`（乱17·浅色）和 `dark`（乱17·深色）两套配色，采用官方 `tongwenfeng.trime.yaml` 的**单向链接**写法：
+
+```yaml
+preset_color_schemes:
+  default:
+    dark_scheme: dark        # 我是浅色，夜间请用 dark
+  dark:
+    light_scheme: default    # 我是深色，白天请用 default
+```
+
+### 为什么"装了主题却不自动切换"
+
+**自动跟随是同文 App 的一个设置开关，主题文件无法代替你打开它。** 核对 3.3.11 / 3.3.12 / 3.3.13 及最新 develop 分支源码后，选择逻辑是：
+
+```kotlin
+// ColorSchemeResolver.resolve()（3.3.13+）
+if (!followSystemDayNight) return scheme(selectedSchemeId) ?: defaultScheme
+// 开关打开后，才按 isNightMode() 顺着 light_scheme / dark_scheme 切
+```
+
+`followSystemDayNight` 对应设置项「跟随系统夜间模式」，`ThemePrefs.kt` 里**默认 false**。开关没开时，配色就固定在你选中的那一套，系统怎么切都不会变——这是最常见的原因，也是"看起来主题不支持"的真相。
+
+另外两个容易漏掉的条件：
+
+1. **开关变更本身不会重算配色**。`activateScheme()` 只在初始化、`onSystemNightModeChange()`（系统模式变化）、切换主题、切换配色时调用；单纯拨动开关不会触发。所以打开开关后要**重新选一次主题/配色，或强行停止同文再打开键盘**，当前配色才会重算。之后再切系统深浅就会自动跟了。
+2. **高级设置 → 界面模式必须是「自动」**。若设成「浅色」或「深色」，`AppCompatDelegate.setDefaultNightMode()` 会把 `Configuration.isNightMode()` 固定住，系统再怎么切，输入法读到的夜间状态都不变。
+
+### 打开步骤（按顺序）
+
+| 步骤 | 位置 | 要点 |
+| --- | --- | --- |
+| 1 | 同文设置 → 主题 | 选中「乱序17键双拼」；配色列表里选「乱17·浅色」 |
+| 2 | 同文设置 → 主题 | 打开 **「跟随系统夜间模式」**（默认关） |
+| 3 | 同文设置 → 高级 | 「界面模式」设为 **自动** |
+| 4 | 退出设置页 | 重新选一次主题 / 配色，或强停同文后重启键盘，让配色重算 |
+| 5 | 系统设置 | 切换系统深色模式，观察键盘背景由 `0xFFFFFF` 变 `0x171B21` |
+
+同文 3.3.13 还提供「主题 → 主题诊断」，可直接检查 `MISSING_SCHEME_LINK` 之类的配色链接错误；本主题两套配色的链接目标都存在，不会报这个警告。
+
+### 不依赖开关的兜底：第 0 行「☾」
+
+少数 ROM 在切换深色模式时不给输入法进程发 `onConfigurationChanged`，或者干脆重启 IME，此时自动跟随可能失灵。第 0 行末的「☾」键走 Trime 官方的 `set_color_scheme` 命令（`CommonKeyboardActionListener.handleColorScheme → ColorManager.setColorScheme`）：
+
+```yaml
+Luan17_Color_Dark:  { label: "☾", send: FUNCTION, command: set_color_scheme, option: "dark" }
+Luan17_Color_Light: { label: "☀", send: FUNCTION, command: set_color_scheme, option: "default" }
+```
+
+- **单击「☾」** → 立刻切到深色；**长按同一个键** → 切回浅色。
+- 它只改 App 的配色选择（写 `normal_mode_color`），不往文本框写任何字符，也不影响输入方案。
+- 与自动跟随不冲突：开关打开时，手动切到深色后白天仍会按 `light_scheme` 自动回到浅色。
+- 不想要这个键就删掉第 0 行最后一项，并把前 5 个键宽度各改回 `20`。
+
+> 补充：`style/color_scheme` 是网上老教程里的字段，Trime 3.x 源码中已无任何读取处，写了也不会生效；当前配色由 App 的「配色方案」+「跟随系统夜间模式」共同决定。旧版本主题曾用两套配色互相写双向链接（自己指自己），虽能被新版解析，但角色判定有歧义，现已改为官方单向写法。
+
+---
+
+## 九、音节表与统计
 
 `lua/luan17_syllables.lua` 由脚本生成，请勿手工改键位。数据来源是上游 `cn_dicts*` / `cn_dicts_cell*` 的注音列，套用本方案 `speller/algebra` 全量运算（含 `derive` 派生，故一个音节可能对应多个编码）：
 
@@ -205,7 +264,7 @@ Lua 里另内置一组别名（`*` / `!` / `@` / `#` / `$` / `%` 及对应键名
 
 ---
 
-## 九、排错
+## 十、排错
 
 | 现象 | 原因 / 处理 |
 | --- | --- |
@@ -214,14 +273,16 @@ Lua 里另内置一组别名（`*` / `!` / `@` / `#` / `$` / `%` 及对应键名
 | 编码提示行不显示音节 | `prompt_style` 是否为 `"on"`；或该编码不是重码（同码音节不足 2 个时不显示）；或前端未启用 librime-lua |
 | 按第 0 行没反应 | 把 `number_keys` 改成 `"on"`，改用数字 `1~4` / `0` 选码 |
 | Lua 报错 / 候选栏出现「假按钮」 | 4 个 Lua 里有旧版残留，必须全部覆盖后重新部署 |
-| 深色不自动切换 | 同文设置里打开「跟随系统夜间模式」 |
+| 深色不自动切换 | 按[第八章](#八深浅色自动切换)：开关默认关闭；打开后还要重选一次主题/配色（或重启同文）才会重算；「高级设置 → 界面模式」必须为「自动」 |
+| 打开开关后仍固定不变 | 系统切换的是「护眼 / 夜间护眼」而非系统级深色模式；或 ROM 不给 IME 发配置变更。用第 0 行「☾」单击 / 长按手动切 |
+| 配色列表里选错、白天仍是深色 | 选回「乱17·浅色」；两套配色用单向链接，选中深色时白天会自动回浅色，但前提是跟随开关已打开 |
 | 符号页还是只有一页 / 点页签没反应 | 只覆盖了部分文件；`luan17.trime.yaml` 要整体覆盖后重新部署。三页与四个页签键都在这个文件里 |
 | 按「中/En」符号没变化 | 只有「中符」页带 `ascii` 对应（46 个），En / 更多两页本来就输出固定字符；另外确认该页标签是否已变成「西文」 |
 | 升级白霜拼音后功能异常 | `engine.processors` / `filters` 是 **list 整体替换**，升级上游后需核对这两份列表是否仍与新版 `rime_frost_double_pinyin_flypy` 一致 |
 
 ---
 
-## 十、致谢与许可
+## 十一、致谢与许可
 
 - 词库与配置外壳：[白霜拼音 rime-frost](https://github.com/gaboolic/rime-frost)（gaboolic），上游为 [雾凇拼音 rime-ice](https://github.com/iDvel/rime-ice)（iDvel）
 - 前端：[同文输入法 Trime](https://github.com/osfans/trime)、[librime](https://github.com/rime/librime)、[librime-lua](https://github.com/hchunhui/librime-lua)
