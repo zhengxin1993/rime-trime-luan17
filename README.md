@@ -4,6 +4,8 @@
 
 简单说：17 个编码键，每键输出一个字母，首键作声母码、次键作韵母码，两键一音节；词库、语法模型、标点、辅助码、简繁切换等全部沿用上游白霜拼音，本仓库只提供**增量配置**。
 
+主题另带一套**中英文符号键盘**：3 页共 180 个符号，中文标点可一键切成英文半角。
+
 ---
 
 ## 一、依赖（必读）
@@ -47,7 +49,7 @@ https://github.com/gaboolic/rime-frost/releases/download/nightly/rime-frost-sche
 | 文件 | 放到哪里 | 作用 |
 | --- | --- | --- |
 | `double_pinyin_luan.schema.yaml` | Rime 用户目录**根** | 输入方案：`__include` 继承白霜小鹤双拼，只替换 `speller/algebra`、translator 的 prism / preedit，并重列 `engine` 以插入 3 个 Lua 组件 |
-| `luan17.trime.yaml` | Rime 用户目录**根**（Trime 会扫描 `*.trime.yaml`） | 主题：3×6 乱序 17 键键盘 + 新增选码行 + 浅色 / 深色两套配色 |
+| `luan17.trime.yaml` | Rime 用户目录**根**（Trime 会扫描 `*.trime.yaml`） | 主题：3×6 乱序 17 键键盘 + 新增选码行 + 三页中英文符号键盘 + 浅色 / 深色两套配色 |
 | `lua/luan17_syllables.lua` | `lua/` | 音节 ↔ 17 键编码对照表、共享状态、`Segment.prompt` 写入辅助 |
 | `lua/luan17_processor.lua` | `lua/` | 按键处理器：只拦 F5~F10，其余按键一律放行 |
 | `lua/luan17_filter.lua` | `lua/` | 按候选的 `［全拼］` 注释过滤出指定音节（必须排在 `corrector` 之前） |
@@ -74,9 +76,45 @@ https://github.com/gaboolic/rime-frost/releases/download/nightly/rime-frost-sche
 
 主题 `style` 里 `keyboard_height: 296`（横屏 236）已为新增行留出高度；不需要选码行时可以把这 5 个键删掉，改用物理键盘 F5~F10。
 
+符号键盘的扩展见下一节，主键盘（含功能行与上滑手势）一字未动。
+
 ---
 
-## 四、安装（以 Android + 同文 Trime 为例）
+## 四、符号键盘（中英文）
+
+点主键盘功能行的「符」进入。原版只有 20 个中文标点，现在扩成 **3 页 × 60 键 = 180 个符号键**，每页底部是同一条功能行：
+
+```text
+中/En | 中符 | En符 | 更多 | ⌫ | 空格 | ⏎ | 返回
+```
+
+| 页 | 内容 | 数量 |
+| --- | --- | --- |
+| 中符（默认，`symbols`） | 中文标点：逗号句号问号叹号、分号冒号顿号、省略号破折号、各类引号与括号、书名号、全角运算符、单位与货币 | 60 |
+| En符（`symbols_en`） | 数字 + 全部 ASCII 半角标点 + 常用数学 / 货币 / 版权符号 | 60 |
+| 更多（`symbols_more`） | 圈号、罗马数字、希腊字母、箭头、单位、几何与标记符号 | 60 |
+
+En 页第二行起的半角标点：
+
+```text
+~ ` ! @ # $ % ^ & *      ( ) - _ = + [ ] { }
+\ | ; : ' " , . / ?      < > ± × ÷ ≠ ≈ ≤ ≥ ∞
+§ ¶ • ¢ £ € ¥ © ® ™
+```
+
+**中英文怎么共存**
+
+- 中文页每个键写 `click: 中文标点` 加 `ascii: 英文半角`，共 46 组对应，例如 `，→ ,`、`《→ <`、`（→ (`、`＄→ $`。按功能行的「中/En」切换 `ascii_mode` 后，**同一套键位整页输出英文半角标点**；再按一次切回中文。
+- 需要纯英文 / 编程符号时切到「En符」，那一页始终输出半角字符，不受中西文状态影响。
+- 15 个中文标点键另有 `long_click` 变体（`“` 长按 `‘`、`【` 长按 `〖`、`《` 长按 `〈`、`￥` 长按 `¢` 等），不额外占键位。
+- **长按「En符」** 打开 Trime 自带的液体键盘「更多」页（主题用 `__include: trime:/liquid_keyboard` 继承官方，内含中文、西文、数学、单位、Emoji、颜文字等 20+ 分类）。需要海量符号时走这里，里面的「返回」可退回符号键盘。
+- 三页都设 `ascii_mode: 0` + `reset_ascii_mode: true`：进入时保证是中文状态；返回主键盘时由 `default` 页自动恢复中文，不会把西文状态带回去。
+
+**实现依据**（核对 Trime 3.3.x 源码）：`TextKey.ascii` 在 `Key.checkKeyAction()` 中于 `ascii_mode` 为真时替换 `CLICK`；`long_click` / `select` 分别对应 `KeyBehavior.LONG_CLICK` 与 `PresetKey.select`；页签键的 `send: Eisu_toggle` 在 `CommonKeyboardActionListener` 的 `KEYCODE_EISU` 分支只用于 `switchKeyboard(select)`，**不会误翻 Rime 的中西文状态**（真正切换的是 `Luan17_Mode` 的 `send: SWITCH_CHARSET` + `toggle: ascii_mode`）。新增页通过 `select` 直接按名字切换，不加入 `style/keyboards` 循环列表，因此不影响「切换键盘」手势。
+
+---
+
+## 五、安装（以 Android + 同文 Trime 为例）
 
 1. **先装上游**：把白霜拼音整包解压 / clone 到同文的 Rime 用户目录（`/rime`），重新部署，确认「白霜·小鹤双拼」能正常打字。
 2. **覆盖这 6 个文件**：两个 `*.yaml` 放根目录，4 个 `*.lua` 放 `lua/`（用 `luan17-bundle.zip` 解压覆盖最省事）。
@@ -98,7 +136,7 @@ https://github.com/gaboolic/rime-frost/releases/download/nightly/rime-frost-sche
 
 ---
 
-## 五、选码怎么用
+## 六、选码怎么用
 
 以 `nh` 为例，这个编码对应 `na / rua / nia` 三个音节：
 
@@ -139,7 +177,7 @@ RimeSelectCandidate → Context::Select() → ConcreteEngine::OnSelect()
 
 ---
 
-## 六、配置开关
+## 七、配置开关
 
 在 `double_pinyin_luan.schema.yaml` 的 `luan17_select` 段：
 
@@ -157,7 +195,7 @@ Lua 里另内置一组别名（`*` / `!` / `@` / `#` / `$` / `%` 及对应键名
 
 ---
 
-## 七、音节表与统计
+## 八、音节表与统计
 
 `lua/luan17_syllables.lua` 由脚本生成，请勿手工改键位。数据来源是上游 `cn_dicts*` / `cn_dicts_cell*` 的注音列，套用本方案 `speller/algebra` 全量运算（含 `derive` 派生，故一个音节可能对应多个编码）：
 
@@ -167,7 +205,7 @@ Lua 里另内置一组别名（`*` / `!` / `@` / `#` / `$` / `%` 及对应键名
 
 ---
 
-## 八、排错
+## 九、排错
 
 | 现象 | 原因 / 处理 |
 | --- | --- |
@@ -177,11 +215,13 @@ Lua 里另内置一组别名（`*` / `!` / `@` / `#` / `$` / `%` 及对应键名
 | 按第 0 行没反应 | 把 `number_keys` 改成 `"on"`，改用数字 `1~4` / `0` 选码 |
 | Lua 报错 / 候选栏出现「假按钮」 | 4 个 Lua 里有旧版残留，必须全部覆盖后重新部署 |
 | 深色不自动切换 | 同文设置里打开「跟随系统夜间模式」 |
+| 符号页还是只有一页 / 点页签没反应 | 只覆盖了部分文件；`luan17.trime.yaml` 要整体覆盖后重新部署。三页与四个页签键都在这个文件里 |
+| 按「中/En」符号没变化 | 只有「中符」页带 `ascii` 对应（46 个），En / 更多两页本来就输出固定字符；另外确认该页标签是否已变成「西文」 |
 | 升级白霜拼音后功能异常 | `engine.processors` / `filters` 是 **list 整体替换**，升级上游后需核对这两份列表是否仍与新版 `rime_frost_double_pinyin_flypy` 一致 |
 
 ---
 
-## 九、致谢与许可
+## 十、致谢与许可
 
 - 词库与配置外壳：[白霜拼音 rime-frost](https://github.com/gaboolic/rime-frost)（gaboolic），上游为 [雾凇拼音 rime-ice](https://github.com/iDvel/rime-ice)（iDvel）
 - 前端：[同文输入法 Trime](https://github.com/osfans/trime)、[librime](https://github.com/rime/librime)、[librime-lua](https://github.com/hchunhui/librime-lua)

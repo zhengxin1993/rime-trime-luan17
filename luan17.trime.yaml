@@ -9,6 +9,8 @@
 #   21 L     22 D     23 Y     24 WZ    25 JK     26 NR
 #   31 Ch    32 Q     33 G     34 CF    35 T      36 ⌫
 #   功能行：123 | 符 | ， | 空格 | 。 | ⏎   （全部保持原版，未占用任何按键）
+#   点「符」进入符号键盘：3 页共 180 个符号（中文标点 / En 半角 / 更多），
+#   页内「中/En」键让中文标点一键输出对应英文半角；长按「En符」打开液体键盘符号库。
 #
 # 【上下两行】用的是 Trime 原生的两行结构，不是把候选栏拆开：
 #   第 1 行 = 键盘上方的编码提示行（preedit），由 Lua 写入 Segment.prompt
@@ -170,6 +172,12 @@ preset_keys:
   Luan17_3:   { label: "3",    send: F8 }
   Luan17_4:   { label: "4",    send: F9 }
   Luan17_All: { label: "全部", send: F10 }
+  # 符号键盘：中/西文切换 + 三页页签。send: Eisu_toggle 只用于切键盘，
+  # 不会真的翻转 Rime 的 ascii_mode（见 CommonKeyboardActionListener KEYCODE_EISU 分支）
+  Luan17_Mode:     { label: "中/En", functional: true, toggle: ascii_mode, send: SWITCH_CHARSET, states: [中文, 西文] }
+  Luan17_Sym_CN:   { label: "中符", functional: true, send: Eisu_toggle, select: symbols }
+  Luan17_Sym_EN:   { label: "En符", functional: true, send: Eisu_toggle, select: symbols_en }
+  Luan17_Sym_More: { label: "更多", functional: true, send: Eisu_toggle, select: symbols_more }
   BackSpace: { label: "⌫", repeatable: true, functional: true, send: BackSpace }
   Return: { label: enter_labels, functional: true, send: Return }
   Shift_L: { label: "Caps", send: Shift_L, shift_lock: click }
@@ -329,42 +337,277 @@ preset_keyboards:
       - { click: Return, width: 20, height: 50, key_text_size: 17, key_back_color: enter_back_color, hilited_key_back_color: hilited_enter_back_color, key_text_color: enter_text_color, hilited_key_text_color: enter_text_color }
 
   # ---------------------------------------------------------------------------
-  # 中文符号键盘
+  # 第 1 页：中文标点（60 键，带英文半角对应）
+  # 每个键 click=中文标点、ascii=英文半角；Luan17_Mode 切 ascii_mode 后整页变西文。
   # ---------------------------------------------------------------------------
   symbols:
-    name: 符号
+    name: 符号·中文标点
     author: WorkBuddy
     ascii_mode: 0
+    reset_ascii_mode: true
     horizontal_gap: 2
     vertical_gap: 2
-    width: 20
-    height: 44
+    width: 10
+    height: 38
     lock: false
     keys:
-      - { click: "，" }
-      - { click: "。" }
-      - { click: "？" }
-      - { click: "！" }
-      - { click: "、" }
-      - { click: "；" }
-      - { click: "：" }
-      - { click: "“" }
-      - { click: "”" }
-      - { click: "…" }
-      - { click: "（" }
-      - { click: "）" }
-      - { click: "【" }
-      - { click: "】" }
-      - { click: "《" }
-      - { click: "》" }
-      - { click: "—" }
-      - { click: "～" }
-      - { click: "·" }
-      - { click: "￥" }
-      - { click: Keyboard_default, width: 20, height: 50, key_text_size: 17 }
-      - { click: BackSpace, width: 20, height: 50, key_back_color: off_key_back_color, hilited_key_back_color: hilited_off_key_back_color }
-      - { click: space, width: 40, height: 50, key_back_color: space_back_color, hilited_space_back_color: hilited_space_back_color }
-      - { click: Return, width: 20, height: 50, key_text_size: 17, key_back_color: enter_back_color, hilited_key_back_color: hilited_enter_back_color, key_text_color: enter_text_color, hilited_key_text_color: enter_text_color }
+      # 第 1 行
+      - { click: "，", ascii: ",", width: 10, height: 38, key_text_size: 17 }
+      - { click: "。", ascii: ".", width: 10, height: 38, key_text_size: 17 }
+      - { click: "、", ascii: ",", width: 10, height: 38, key_text_size: 17 }
+      - { click: "；", ascii: ";", width: 10, height: 38, key_text_size: 17 }
+      - { click: "：", ascii: ":", width: 10, height: 38, key_text_size: 17 }
+      - { click: "？", ascii: "?", width: 10, height: 38, key_text_size: 17 }
+      - { click: "！", ascii: "!", width: 10, height: 38, key_text_size: 17 }
+      - { click: "……", ascii: "...", width: 10, height: 38, key_text_size: 17 }
+      - { click: "——", ascii: "--", long_click: "—", width: 10, height: 38, key_text_size: 17 }
+      - { click: "·", ascii: "`", width: 10, height: 38, key_text_size: 17 }
+      # 第 2 行
+      - { click: "“", ascii: "\"", long_click: "‘", width: 10, height: 38, key_text_size: 17 }
+      - { click: "”", ascii: "\"", long_click: "’", width: 10, height: 38, key_text_size: 17 }
+      - { click: "‘", ascii: "'", width: 10, height: 38, key_text_size: 17 }
+      - { click: "’", ascii: "'", width: 10, height: 38, key_text_size: 17 }
+      - { click: "（", ascii: "(", long_click: "〔", width: 10, height: 38, key_text_size: 17 }
+      - { click: "）", ascii: ")", long_click: "〕", width: 10, height: 38, key_text_size: 17 }
+      - { click: "【", ascii: "[", long_click: "〖", width: 10, height: 38, key_text_size: 17 }
+      - { click: "】", ascii: "]", long_click: "〗", width: 10, height: 38, key_text_size: 17 }
+      - { click: "《", ascii: "<", long_click: "〈", width: 10, height: 38, key_text_size: 17 }
+      - { click: "》", ascii: ">", long_click: "〉", width: 10, height: 38, key_text_size: 17 }
+      # 第 3 行
+      - { click: "〈", ascii: "<", width: 10, height: 38, key_text_size: 17 }
+      - { click: "〉", ascii: ">", width: 10, height: 38, key_text_size: 17 }
+      - { click: "「", ascii: "\"", long_click: "『", width: 10, height: 38, key_text_size: 17 }
+      - { click: "」", ascii: "\"", long_click: "』", width: 10, height: 38, key_text_size: 17 }
+      - { click: "『", ascii: "'", width: 10, height: 38, key_text_size: 17 }
+      - { click: "』", ascii: "'", width: 10, height: 38, key_text_size: 17 }
+      - { click: "〔", ascii: "[", width: 10, height: 38, key_text_size: 17 }
+      - { click: "〕", ascii: "]", width: 10, height: 38, key_text_size: 17 }
+      - { click: "｛", ascii: "{", width: 10, height: 38, key_text_size: 17 }
+      - { click: "｝", ascii: "}", width: 10, height: 38, key_text_size: 17 }
+      # 第 4 行
+      - { click: "～", ascii: "~", width: 10, height: 38, key_text_size: 17 }
+      - { click: "〃", ascii: "\"", width: 10, height: 38, key_text_size: 17 }
+      - { click: "々", width: 10, height: 38, key_text_size: 17 }
+      - { click: "％", ascii: "%", width: 10, height: 38, key_text_size: 17 }
+      - { click: "‰", width: 10, height: 38, key_text_size: 17 }
+      - { click: "°", width: 10, height: 38, key_text_size: 17 }
+      - { click: "℃", long_click: "℉", width: 10, height: 38, key_text_size: 17 }
+      - { click: "￥", ascii: "$", long_click: "¢", width: 10, height: 38, key_text_size: 17 }
+      - { click: "¥", ascii: "$", long_click: "£", width: 10, height: 38, key_text_size: 17 }
+      - { click: "＄", ascii: "$", long_click: "€", width: 10, height: 38, key_text_size: 17 }
+      # 第 5 行
+      - { click: "＋", ascii: "+", width: 10, height: 38, key_text_size: 17 }
+      - { click: "－", ascii: "-", width: 10, height: 38, key_text_size: 17 }
+      - { click: "＝", ascii: "=", width: 10, height: 38, key_text_size: 17 }
+      - { click: "＊", ascii: "*", width: 10, height: 38, key_text_size: 17 }
+      - { click: "／", ascii: "/", width: 10, height: 38, key_text_size: 17 }
+      - { click: "＼", ascii: "\\", width: 10, height: 38, key_text_size: 17 }
+      - { click: "＆", ascii: "&", width: 10, height: 38, key_text_size: 17 }
+      - { click: "＠", ascii: "@", width: 10, height: 38, key_text_size: 17 }
+      - { click: "＃", ascii: "#", width: 10, height: 38, key_text_size: 17 }
+      - { click: "＾", ascii: "^", width: 10, height: 38, key_text_size: 17 }
+      # 第 6 行
+      - { click: "℉", width: 10, height: 38, key_text_size: 17 }
+      - { click: "㎡", width: 10, height: 38, key_text_size: 17 }
+      - { click: "㎥", width: 10, height: 38, key_text_size: 17 }
+      - { click: "㎏", width: 10, height: 38, key_text_size: 17 }
+      - { click: "㎎", width: 10, height: 38, key_text_size: 17 }
+      - { click: "㎜", width: 10, height: 38, key_text_size: 17 }
+      - { click: "㎝", width: 10, height: 38, key_text_size: 17 }
+      - { click: "㎞", width: 10, height: 38, key_text_size: 17 }
+      - { click: "§", width: 10, height: 38, key_text_size: 17 }
+      - { click: "¶", width: 10, height: 38, key_text_size: 17 }
+      # 功能行：中/西文切换 + 三页页签 + 退格 / 空格 / 回车 / 返回主键盘
+      - { click: Luan17_Mode, width: 14, height: 48, key_text_size: 14, key_back_color: off_key_back_color, hilited_key_back_color: hilited_off_key_back_color }
+      - { click: Luan17_Sym_CN, width: 10, height: 48, key_text_size: 14, key_back_color: off_key_back_color, hilited_key_back_color: hilited_off_key_back_color }
+      - { click: Luan17_Sym_EN, width: 10, height: 48, key_text_size: 14, key_back_color: off_key_back_color, hilited_key_back_color: hilited_off_key_back_color, long_click: liquid_keyboard_switch }
+      - { click: Luan17_Sym_More, width: 10, height: 48, key_text_size: 14, key_back_color: off_key_back_color, hilited_key_back_color: hilited_off_key_back_color }
+      - { click: BackSpace, width: 12, height: 48, key_text_size: 14, key_back_color: off_key_back_color, hilited_key_back_color: hilited_off_key_back_color }
+      - { click: space, width: 24, height: 48, key_text_size: 15, key_back_color: space_back_color, hilited_space_back_color: hilited_space_back_color }
+      - { click: Return, width: 10, height: 48, key_text_size: 15, key_back_color: enter_back_color, hilited_key_back_color: hilited_enter_back_color, key_text_color: enter_text_color, hilited_key_text_color: enter_text_color }
+      - { click: Keyboard_default, width: 10, height: 48, key_text_size: 14, key_back_color: off_key_back_color, hilited_key_back_color: hilited_off_key_back_color }
+
+  # ---------------------------------------------------------------------------
+  # 第 2 页：英文 / 半角符号（60 键）
+  # ASCII 标点、数字、货币、版权与常用数学符号；不受中西文切换影响。
+  # ---------------------------------------------------------------------------
+  symbols_en:
+    name: 符号·En 半角
+    author: WorkBuddy
+    ascii_mode: 0
+    reset_ascii_mode: true
+    horizontal_gap: 2
+    vertical_gap: 2
+    width: 10
+    height: 38
+    lock: false
+    keys:
+      # 第 1 行
+      - { click: "1", width: 10, height: 38, key_text_size: 17 }
+      - { click: "2", width: 10, height: 38, key_text_size: 17 }
+      - { click: "3", width: 10, height: 38, key_text_size: 17 }
+      - { click: "4", width: 10, height: 38, key_text_size: 17 }
+      - { click: "5", width: 10, height: 38, key_text_size: 17 }
+      - { click: "6", width: 10, height: 38, key_text_size: 17 }
+      - { click: "7", width: 10, height: 38, key_text_size: 17 }
+      - { click: "8", width: 10, height: 38, key_text_size: 17 }
+      - { click: "9", width: 10, height: 38, key_text_size: 17 }
+      - { click: "0", width: 10, height: 38, key_text_size: 17 }
+      # 第 2 行
+      - { click: "~", width: 10, height: 38, key_text_size: 17 }
+      - { click: "`", width: 10, height: 38, key_text_size: 17 }
+      - { click: "!", width: 10, height: 38, key_text_size: 17 }
+      - { click: "@", width: 10, height: 38, key_text_size: 17 }
+      - { click: "#", width: 10, height: 38, key_text_size: 17 }
+      - { click: "$", width: 10, height: 38, key_text_size: 17 }
+      - { click: "%", width: 10, height: 38, key_text_size: 17 }
+      - { click: "^", width: 10, height: 38, key_text_size: 17 }
+      - { click: "&", width: 10, height: 38, key_text_size: 17 }
+      - { click: "*", width: 10, height: 38, key_text_size: 17 }
+      # 第 3 行
+      - { click: "(", width: 10, height: 38, key_text_size: 17 }
+      - { click: ")", width: 10, height: 38, key_text_size: 17 }
+      - { click: "-", width: 10, height: 38, key_text_size: 17 }
+      - { click: "_", width: 10, height: 38, key_text_size: 17 }
+      - { click: "=", width: 10, height: 38, key_text_size: 17 }
+      - { click: "+", width: 10, height: 38, key_text_size: 17 }
+      - { click: "[", width: 10, height: 38, key_text_size: 17 }
+      - { click: "]", width: 10, height: 38, key_text_size: 17 }
+      - { click: "{", width: 10, height: 38, key_text_size: 17 }
+      - { click: "}", width: 10, height: 38, key_text_size: 17 }
+      # 第 4 行
+      - { click: "\\", width: 10, height: 38, key_text_size: 17 }
+      - { click: "|", width: 10, height: 38, key_text_size: 17 }
+      - { click: ";", width: 10, height: 38, key_text_size: 17 }
+      - { click: ":", width: 10, height: 38, key_text_size: 17 }
+      - { click: "'", width: 10, height: 38, key_text_size: 17 }
+      - { click: "\"", width: 10, height: 38, key_text_size: 17 }
+      - { click: ",", width: 10, height: 38, key_text_size: 17 }
+      - { click: ".", width: 10, height: 38, key_text_size: 17 }
+      - { click: "/", width: 10, height: 38, key_text_size: 17 }
+      - { click: "?", width: 10, height: 38, key_text_size: 17 }
+      # 第 5 行
+      - { click: "<", width: 10, height: 38, key_text_size: 17 }
+      - { click: ">", width: 10, height: 38, key_text_size: 17 }
+      - { click: "±", width: 10, height: 38, key_text_size: 17 }
+      - { click: "×", width: 10, height: 38, key_text_size: 17 }
+      - { click: "÷", width: 10, height: 38, key_text_size: 17 }
+      - { click: "≠", width: 10, height: 38, key_text_size: 17 }
+      - { click: "≈", width: 10, height: 38, key_text_size: 17 }
+      - { click: "≤", width: 10, height: 38, key_text_size: 17 }
+      - { click: "≥", width: 10, height: 38, key_text_size: 17 }
+      - { click: "∞", width: 10, height: 38, key_text_size: 17 }
+      # 第 6 行
+      - { click: "§", width: 10, height: 38, key_text_size: 17 }
+      - { click: "¶", width: 10, height: 38, key_text_size: 17 }
+      - { click: "•", width: 10, height: 38, key_text_size: 17 }
+      - { click: "¢", width: 10, height: 38, key_text_size: 17 }
+      - { click: "£", width: 10, height: 38, key_text_size: 17 }
+      - { click: "€", width: 10, height: 38, key_text_size: 17 }
+      - { click: "¥", width: 10, height: 38, key_text_size: 17 }
+      - { click: "©", width: 10, height: 38, key_text_size: 17 }
+      - { click: "®", width: 10, height: 38, key_text_size: 17 }
+      - { click: "™", width: 10, height: 38, key_text_size: 17 }
+      # 功能行：中/西文切换 + 三页页签 + 退格 / 空格 / 回车 / 返回主键盘
+      - { click: Luan17_Mode, width: 14, height: 48, key_text_size: 14, key_back_color: off_key_back_color, hilited_key_back_color: hilited_off_key_back_color }
+      - { click: Luan17_Sym_CN, width: 10, height: 48, key_text_size: 14, key_back_color: off_key_back_color, hilited_key_back_color: hilited_off_key_back_color }
+      - { click: Luan17_Sym_EN, width: 10, height: 48, key_text_size: 14, key_back_color: off_key_back_color, hilited_key_back_color: hilited_off_key_back_color, long_click: liquid_keyboard_switch }
+      - { click: Luan17_Sym_More, width: 10, height: 48, key_text_size: 14, key_back_color: off_key_back_color, hilited_key_back_color: hilited_off_key_back_color }
+      - { click: BackSpace, width: 12, height: 48, key_text_size: 14, key_back_color: off_key_back_color, hilited_key_back_color: hilited_off_key_back_color }
+      - { click: space, width: 24, height: 48, key_text_size: 15, key_back_color: space_back_color, hilited_space_back_color: hilited_space_back_color }
+      - { click: Return, width: 10, height: 48, key_text_size: 15, key_back_color: enter_back_color, hilited_key_back_color: hilited_enter_back_color, key_text_color: enter_text_color, hilited_key_text_color: enter_text_color }
+      - { click: Keyboard_default, width: 10, height: 48, key_text_size: 14, key_back_color: off_key_back_color, hilited_key_back_color: hilited_off_key_back_color }
+
+  # ---------------------------------------------------------------------------
+  # 第 3 页：序号 / 罗马 / 希腊 / 箭头 / 单位 / 几何（60 键）
+  # 中文环境常用但不属于标点的符号；长按「En符」可打开 Trime 液体键盘符号库。
+  # ---------------------------------------------------------------------------
+  symbols_more:
+    name: 符号·更多
+    author: WorkBuddy
+    ascii_mode: 0
+    reset_ascii_mode: true
+    horizontal_gap: 2
+    vertical_gap: 2
+    width: 10
+    height: 38
+    lock: false
+    keys:
+      # 第 1 行
+      - { click: "①", width: 10, height: 38, key_text_size: 17 }
+      - { click: "②", width: 10, height: 38, key_text_size: 17 }
+      - { click: "③", width: 10, height: 38, key_text_size: 17 }
+      - { click: "④", width: 10, height: 38, key_text_size: 17 }
+      - { click: "⑤", width: 10, height: 38, key_text_size: 17 }
+      - { click: "⑥", width: 10, height: 38, key_text_size: 17 }
+      - { click: "⑦", width: 10, height: 38, key_text_size: 17 }
+      - { click: "⑧", width: 10, height: 38, key_text_size: 17 }
+      - { click: "⑨", width: 10, height: 38, key_text_size: 17 }
+      - { click: "⑩", width: 10, height: 38, key_text_size: 17 }
+      # 第 2 行
+      - { click: "Ⅰ", width: 10, height: 38, key_text_size: 17 }
+      - { click: "Ⅱ", width: 10, height: 38, key_text_size: 17 }
+      - { click: "Ⅲ", width: 10, height: 38, key_text_size: 17 }
+      - { click: "Ⅳ", width: 10, height: 38, key_text_size: 17 }
+      - { click: "Ⅴ", width: 10, height: 38, key_text_size: 17 }
+      - { click: "Ⅵ", width: 10, height: 38, key_text_size: 17 }
+      - { click: "Ⅶ", width: 10, height: 38, key_text_size: 17 }
+      - { click: "Ⅷ", width: 10, height: 38, key_text_size: 17 }
+      - { click: "Ⅸ", width: 10, height: 38, key_text_size: 17 }
+      - { click: "Ⅹ", width: 10, height: 38, key_text_size: 17 }
+      # 第 3 行
+      - { click: "α", width: 10, height: 38, key_text_size: 17 }
+      - { click: "β", width: 10, height: 38, key_text_size: 17 }
+      - { click: "γ", width: 10, height: 38, key_text_size: 17 }
+      - { click: "δ", width: 10, height: 38, key_text_size: 17 }
+      - { click: "ε", width: 10, height: 38, key_text_size: 17 }
+      - { click: "ζ", width: 10, height: 38, key_text_size: 17 }
+      - { click: "η", width: 10, height: 38, key_text_size: 17 }
+      - { click: "θ", width: 10, height: 38, key_text_size: 17 }
+      - { click: "ι", width: 10, height: 38, key_text_size: 17 }
+      - { click: "κ", width: 10, height: 38, key_text_size: 17 }
+      # 第 4 行
+      - { click: "←", width: 10, height: 38, key_text_size: 17 }
+      - { click: "↑", width: 10, height: 38, key_text_size: 17 }
+      - { click: "→", width: 10, height: 38, key_text_size: 17 }
+      - { click: "↓", width: 10, height: 38, key_text_size: 17 }
+      - { click: "⇄", width: 10, height: 38, key_text_size: 17 }
+      - { click: "⇅", width: 10, height: 38, key_text_size: 17 }
+      - { click: "⇒", width: 10, height: 38, key_text_size: 17 }
+      - { click: "⇔", width: 10, height: 38, key_text_size: 17 }
+      - { click: "↔", width: 10, height: 38, key_text_size: 17 }
+      - { click: "↕", width: 10, height: 38, key_text_size: 17 }
+      # 第 5 行
+      - { click: "°", width: 10, height: 38, key_text_size: 17 }
+      - { click: "℃", width: 10, height: 38, key_text_size: 17 }
+      - { click: "℉", width: 10, height: 38, key_text_size: 17 }
+      - { click: "㎡", width: 10, height: 38, key_text_size: 17 }
+      - { click: "㎥", width: 10, height: 38, key_text_size: 17 }
+      - { click: "㎏", width: 10, height: 38, key_text_size: 17 }
+      - { click: "㎎", width: 10, height: 38, key_text_size: 17 }
+      - { click: "㎜", width: 10, height: 38, key_text_size: 17 }
+      - { click: "㎝", width: 10, height: 38, key_text_size: 17 }
+      - { click: "㎞", width: 10, height: 38, key_text_size: 17 }
+      # 第 6 行
+      - { click: "★", width: 10, height: 38, key_text_size: 17 }
+      - { click: "☆", width: 10, height: 38, key_text_size: 17 }
+      - { click: "○", width: 10, height: 38, key_text_size: 17 }
+      - { click: "●", width: 10, height: 38, key_text_size: 17 }
+      - { click: "◇", width: 10, height: 38, key_text_size: 17 }
+      - { click: "◆", width: 10, height: 38, key_text_size: 17 }
+      - { click: "□", width: 10, height: 38, key_text_size: 17 }
+      - { click: "■", width: 10, height: 38, key_text_size: 17 }
+      - { click: "△", width: 10, height: 38, key_text_size: 17 }
+      - { click: "▲", width: 10, height: 38, key_text_size: 17 }
+      # 功能行：中/西文切换 + 三页页签 + 退格 / 空格 / 回车 / 返回主键盘
+      - { click: Luan17_Mode, width: 14, height: 48, key_text_size: 14, key_back_color: off_key_back_color, hilited_key_back_color: hilited_off_key_back_color }
+      - { click: Luan17_Sym_CN, width: 10, height: 48, key_text_size: 14, key_back_color: off_key_back_color, hilited_key_back_color: hilited_off_key_back_color }
+      - { click: Luan17_Sym_EN, width: 10, height: 48, key_text_size: 14, key_back_color: off_key_back_color, hilited_key_back_color: hilited_off_key_back_color, long_click: liquid_keyboard_switch }
+      - { click: Luan17_Sym_More, width: 10, height: 48, key_text_size: 14, key_back_color: off_key_back_color, hilited_key_back_color: hilited_off_key_back_color }
+      - { click: BackSpace, width: 12, height: 48, key_text_size: 14, key_back_color: off_key_back_color, hilited_key_back_color: hilited_off_key_back_color }
+      - { click: space, width: 24, height: 48, key_text_size: 15, key_back_color: space_back_color, hilited_space_back_color: hilited_space_back_color }
+      - { click: Return, width: 10, height: 48, key_text_size: 15, key_back_color: enter_back_color, hilited_key_back_color: hilited_enter_back_color, key_text_color: enter_text_color, hilited_key_text_color: enter_text_color }
+      - { click: Keyboard_default, width: 10, height: 48, key_text_size: 14, key_back_color: off_key_back_color, hilited_key_back_color: hilited_off_key_back_color }
 
 android_keys:
   __include: trime:/android_keys
